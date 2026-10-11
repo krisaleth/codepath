@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | v1 (revised) |
+| **Version** | v1 |
 | **Status** | Draft for review |
 | **Scope** | MVP |
 
