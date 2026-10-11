@@ -6,8 +6,6 @@
 | **Status** | Draft for review |
 | **Scope** | MVP |
 
-> Items marked **[Decision]** resolve an ambiguity in v1.0. They are proposed defaults and can be changed, but each one should be confirmed before implementation.
-
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)
