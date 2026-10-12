@@ -1,404 +1,484 @@
-# Course Marketplace — Requirements Specification
+# CodePath — Đặc tả yêu cầu hệ thống
+
+**Đề tài:** Phát triển nền tảng học lập trình trực tuyến tích hợp môi trường thực hành và đánh giá
 
 | | |
 |---|---|
-| **Version** | v1 |
-| **Status** | Draft for review |
-| **Scope** | MVP |
+| **Phiên bản** | 1.0 |
+| **Trạng thái** | Bản nháp để review |
+| **Phạm vi** | MVP |
 
-## Table of Contents
+> Các mục đánh dấu **[Quyết định]** là các giả định mặc định nhằm giải quyết điểm chưa rõ. Có thể thay đổi, nhưng nên xác nhận trước khi triển khai.
 
-1. [Project Overview](#1-project-overview)
-2. [User Roles](#2-user-roles)
-3. [Domain Model and State Machines](#3-domain-model-and-state-machines)
-4. [Functional Requirements](#4-functional-requirements)
-5. [Business Rules](#5-business-rules)
-6. [Non-Functional Requirements](#6-non-functional-requirements)
-7. [Out of Scope](#7-out-of-scope)
-8. [Acceptance Criteria](#8-acceptance-criteria)
-9. [Traceability Matrix](#9-traceability-matrix)
-10. [Open Questions](#10-open-questions)
+## Mục lục
+
+1. [Tổng quan](#1-tổng-quan)
+2. [Vai trò người dùng](#2-vai-trò-người-dùng)
+3. [Mô hình nghiệp vụ và vòng đời trạng thái](#3-mô-hình-nghiệp-vụ-và-vòng-đời-trạng-thái)
+4. [Yêu cầu chức năng](#4-yêu-cầu-chức-năng)
+5. [Quy tắc nghiệp vụ](#5-quy-tắc-nghiệp-vụ)
+6. [Yêu cầu phi chức năng](#6-yêu-cầu-phi-chức-năng)
+7. [Ngoài phạm vi](#7-ngoài-phạm-vi)
+8. [Tiêu chí chấp nhận](#8-tiêu-chí-chấp-nhận)
+9. [Ma trận truy vết](#9-ma-trận-truy-vết)
+10. [Câu hỏi mở](#10-câu-hỏi-mở)
 
 ---
 
-## 1. Project Overview
+## 1. Tổng quan
 
-A web-based course marketplace where instructors create and publish courses, students purchase courses and learn online, and administrators moderate courses and manage users.
+CodePath là nền tảng web giúp người học tiếp cận lập trình theo lộ trình: học qua bài giảng, **viết và chạy code trực tiếp trên trình duyệt**, nộp bài để được **chấm tự động** bằng bộ test case, và tham gia các bài đánh giá (quiz, bài kiểm tra code) để đo năng lực. Giảng viên tạo nội dung và bài tập; quản trị viên kiểm duyệt nội dung và vận hành hệ thống.
 
-### 1.1 Technology Stack
+### 1.1 Mục tiêu
 
-| Layer | Technology |
+- Rút ngắn khoảng cách giữa **học lý thuyết** và **thực hành**: người học không cần cài đặt môi trường.
+- Cung cấp **phản hồi tức thì** thông qua chấm bài tự động.
+- Giúp giảng viên **theo dõi tiến độ và kết quả** của người học.
+- Đảm bảo việc chạy mã không đáng tin cậy được thực hiện **an toàn** trong môi trường cô lập.
+
+### 1.2 Công nghệ
+
+| Tầng | Công nghệ |
 |---|---|
-| Frontend | React, TypeScript, Vite |
+| Frontend | React, TypeScript, Vite, Monaco Editor (trình soạn code) |
 | Backend | Node.js, Express.js, TypeScript |
-| Database | PostgreSQL |
+| Cơ sở dữ liệu | PostgreSQL |
 | ORM | Prisma |
-| Validation | Zod |
-| Payment | Mock payment for MVP (VNPAY Sandbox optional) |
-| API style | REST under `/api/v1`, documented with OpenAPI/Swagger |
-| Local setup | Docker Compose (PostgreSQL) + seed script |
+| Hàng đợi chấm bài | Redis + BullMQ |
+| Môi trường chạy code | Docker sandbox tự dựng hoặc Judge0 (self-hosted) |
+| Kiểm tra dữ liệu | Zod |
+| API | REST dưới `/api/v1`, tài liệu OpenAPI/Swagger |
+| Triển khai local | Docker Compose (PostgreSQL, Redis, runner) + seed dữ liệu |
 
-### 1.2 General Conventions
+### 1.3 Quy ước chung
 
-- **Currency:** VND. Amounts are stored as non-negative integers (no decimals).
-- **Timestamps:** stored in UTC, returned as ISO 8601.
-- **Language:** UI in English for MVP (Vietnamese localization is future work).
-- **Browsers:** latest two versions of Chrome, Edge, Firefox, and Safari. UI is responsive down to 360 px width.
+- **Ngôn ngữ giao diện:** Tiếng Việt (có thể mở rộng đa ngôn ngữ sau MVP).
+- **Ngôn ngữ lập trình được hỗ trợ trong MVP:** Python 3, JavaScript (Node.js), C++17. Java là tùy chọn.
+- **Thời gian:** lưu theo UTC, trả về theo ISO 8601.
+- **Trình duyệt:** hai phiên bản mới nhất của Chrome, Edge, Firefox, Safari. Giao diện responsive từ 360 px.
+- **Khóa học miễn phí** trong MVP (không có thanh toán).
 
 ---
 
-## 2. User Roles
+## 2. Vai trò người dùng
 
-Each account has exactly one primary role: `STUDENT`, `INSTRUCTOR`, or `ADMIN`.
+Mỗi tài khoản có đúng một vai trò chính: `LEARNER`, `INSTRUCTOR` hoặc `ADMIN`.
 
-| Role | Capabilities |
+| Vai trò | Quyền hạn |
 |---|---|
-| **Guest** | Browse published courses; search and filter; view course details and preview lessons; register and log in. |
-| **Student** | All guest actions; purchase published courses; view enrolled courses and order history; access lessons of enrolled courses; track lesson progress. |
-| **Instructor** | Create and manage **own** courses, sections, and lessons; mark lessons as preview; submit courses for review; view review results. Can also purchase and learn from **other instructors'** courses. Cannot approve courses or modify courses they do not own. |
-| **Admin** | View and manage users; manage categories; review, approve, or reject submitted courses; unpublish courses; view orders and dashboard statistics. |
+| **Khách (Guest)** | Xem danh sách khóa học đã xuất bản; tìm kiếm, lọc; xem chi tiết khóa học và bài học xem thử; đăng ký, đăng nhập. |
+| **Người học (Learner)** | Mọi quyền của khách; ghi danh khóa học; học bài; viết, chạy thử và nộp code; làm bài đánh giá; xem tiến độ, lịch sử nộp bài và kết quả của mình. |
+| **Giảng viên (Instructor)** | Tạo và quản lý **khóa học của mình**: chương, bài học, bài tập code (kèm test case), bài đánh giá; gửi khóa học để duyệt; xem kết quả duyệt; xem thống kê và bài nộp của người học trong khóa học của mình. Không thể duyệt khóa học hoặc sửa nội dung của giảng viên khác. |
+| **Quản trị viên (Admin)** | Quản lý người dùng; duyệt hoặc từ chối khóa học; quản lý danh mục và ngôn ngữ chạy code; xem thống kê hệ thống; theo dõi hàng đợi chấm bài. |
 
-**[Decision] Instructor as learner:** Instructors may create orders and enroll in courses owned by *other* instructors, but never in their own courses. All ordering and learning rules apply equally to them.
-
-**[Decision] Admin accounts** are created by the seed script only. Public registration accepts `STUDENT` or `INSTRUCTOR` and rejects any other role.
+**[Quyết định]** Tài khoản Admin chỉ được tạo bằng seed script. Đăng ký công khai chỉ cho phép `LEARNER` hoặc `INSTRUCTOR`. Giảng viên cũng có thể ghi danh học khóa học của giảng viên **khác**, nhưng không ghi danh vào khóa học của chính mình.
 
 ---
 
-## 3. Domain Model and State Machines
+## 3. Mô hình nghiệp vụ và vòng đời trạng thái
 
-### 3.1 Course Lifecycle
+### 3.1 Cấu trúc nội dung
 
 ```
-DRAFT ──submit──► PENDING_REVIEW ──approve──► PUBLISHED
-  ▲                    │                          │
-  │                    └──reject──► REJECTED      ├──unpublish (admin/instructor)──► ARCHIVED
-  │                                    │          │
-  └──────────── edit & resubmit ◄──────┘          └──republish (admin)──► PUBLISHED
+Khóa học (Course)
+ └── Chương (Section)
+      └── Mục học (Lesson)  ── loại: TEXT | VIDEO | CODING | QUIZ
 ```
 
-| State | Meaning | Publicly visible | Purchasable | Editable by owner |
-|---|---|---|---|---|
-| `DRAFT` | Being authored | No | No | Yes |
-| `PENDING_REVIEW` | Awaiting admin decision | No | No | No (locked) |
-| `PUBLISHED` | Approved and live | Yes | Yes | Yes (see rules below) |
-| `REJECTED` | Rejected with a reason | No | No | Yes, then resubmit |
-| `ARCHIVED` | Taken offline | No | No | No |
+- **TEXT:** nội dung Markdown.
+- **VIDEO:** đường dẫn video bên ngoài (không upload file trong MVP).
+- **CODING:** bài tập lập trình gồm đề bài, mã khởi tạo (starter code), ngôn ngữ cho phép, giới hạn thời gian/bộ nhớ và các test case.
+- **QUIZ:** bộ câu hỏi trắc nghiệm (một đáp án hoặc nhiều đáp án).
 
-**[Decision] Approval equals publishing.** Approving a course sets its status to `PUBLISHED` directly; there is no separate publish step.
+Mỗi mục học có cờ `isPreview` do giảng viên sở hữu thiết lập. Nội dung của mục không phải xem thử (đường dẫn video, nội dung, đề bài, đáp án) **không được trả về** cho người chưa ghi danh.
 
-Rules:
-- A rejection **requires** a reason (10–1000 characters), which the instructor can view.
-- A rejected course may be edited and resubmitted any number of times.
-- A course can be submitted only if it has a title, description, category, valid price, and at least one section containing at least one lesson.
-- **[Decision]** Edits to a `PUBLISHED` course apply immediately without re-review in the MVP. Admin can unpublish at any time.
-- **[Decision]** Courses with at least one enrollment cannot be hard-deleted. They can only be archived. Courses with no enrollments and no paid orders may be deleted while in `DRAFT` or `REJECTED`.
-- Archiving a course hides it from discovery and blocks new purchases, but **existing enrolled students keep access**.
-
-### 3.2 Order Lifecycle
+### 3.2 Vòng đời khóa học
 
 ```
-PENDING ──payment success──► PAID
-   │
-   ├──payment failure──► FAILED
-   ├──student cancels──► CANCELLED
-   └──timeout (30 min)──► EXPIRED
+DRAFT ──gửi duyệt──► PENDING_REVIEW ──duyệt──► PUBLISHED
+  ▲                        │                       │
+  │                        └──từ chối──► REJECTED  └──gỡ xuống──► ARCHIVED
+  └──────── chỉnh sửa & gửi lại ◄─────────┘
 ```
 
-**[Decision] Order model:** One order contains exactly one course (no cart in MVP).
+| Trạng thái | Hiển thị công khai | Cho phép ghi danh | Chủ khóa học được sửa |
+|---|---|---|---|
+| `DRAFT` | Không | Không | Có |
+| `PENDING_REVIEW` | Không | Không | Không (khóa) |
+| `PUBLISHED` | Có | Có | Có |
+| `REJECTED` | Không | Không | Có, rồi gửi lại |
+| `ARCHIVED` | Không | Không | Không |
 
-Rules:
-- The order stores a **snapshot** of the course price and currency at creation time. Later price changes do not affect existing orders.
-- A user cannot create an order for a course they are already enrolled in.
-- A user may have at most **one `PENDING` order per course**. Creating another returns the existing pending order.
-- `PENDING` orders expire after 30 minutes. Expired, failed, and cancelled orders never grant enrollment.
-- Only `PENDING` orders can transition. `PAID`, `FAILED`, `CANCELLED`, and `EXPIRED` are terminal.
-- **[Decision]** Free courses (price = 0) are out of scope. Course price must be greater than 0.
+Quy tắc:
+- **[Quyết định]** Duyệt khóa học đồng nghĩa với xuất bản (chuyển thẳng sang `PUBLISHED`).
+- Từ chối **bắt buộc có lý do** (10–1000 ký tự); giảng viên xem được lý do và có thể gửi lại.
+- Chỉ gửi duyệt được khi khóa học có đủ tiêu đề, mô tả, danh mục, ít nhất một chương có ít nhất một mục học, và **mỗi bài CODING có ít nhất một test case ẩn** cùng một lời giải tham chiếu đã vượt qua toàn bộ test case.
+- Sửa khóa học `PUBLISHED` được áp dụng ngay, không cần duyệt lại trong MVP. Quản trị viên có thể gỡ xuống bất cứ lúc nào.
+- Khóa học đã có học viên ghi danh **không thể bị xóa cứng**, chỉ có thể lưu trữ. Học viên đã ghi danh **vẫn giữ quyền truy cập** sau khi khóa học bị lưu trữ.
+- Khi giảng viên sửa test case hoặc đề bài của bài tập đã có bài nộp, các bài nộp cũ **giữ nguyên kết quả** đã chấm (không chấm lại tự động).
 
-### 3.3 Payment Flow (Mock)
+### 3.3 Vòng đời bài nộp (Submission)
 
-1. Student creates an order (`POST /orders`) → status `PENDING`.
-2. Student starts checkout (`POST /payments/mock/checkout`) → server creates a `Payment` record with a unique `transactionRef`.
-3. The mock gateway sends a **notification** to the callback endpoint (`POST /payments/mock/callback`) with `transactionRef`, `status`, and `amount`.
-4. The server, inside one database transaction:
-   - Locks the order row and verifies it is `PENDING`.
-   - Verifies the `amount` matches the order's price snapshot.
-   - Records the payment outcome and updates the order status.
-   - On success, creates the enrollment.
-5. **Idempotency:** replaying the same `transactionRef` returns the previously recorded result and creates nothing new.
+```
+QUEUED ──► RUNNING ──► (kết quả cuối)
+```
 
-The mock callback endpoint is registered only when `NODE_ENV` is `development` or `demo` (BR-12). In production it does not exist (returns 404).
+Kết quả cuối (verdict):
 
-### 3.4 Lesson Content
-
-| Type | Content |
+| Verdict | Ý nghĩa |
 |---|---|
-| `VIDEO` | External video URL (e.g., hosted video link) and optional duration |
-| `TEXT` | Rich text / Markdown body |
+| `ACCEPTED` | Đúng toàn bộ test case |
+| `PARTIAL` | Đúng một phần test case |
+| `WRONG_ANSWER` | Sai kết quả ở ít nhất một test và không đúng test nào, hoặc theo cấu hình chấm |
+| `COMPILE_ERROR` | Lỗi biên dịch / cú pháp |
+| `RUNTIME_ERROR` | Lỗi khi chạy (exception, exit code khác 0) |
+| `TIME_LIMIT_EXCEEDED` | Vượt giới hạn thời gian |
+| `MEMORY_LIMIT_EXCEEDED` | Vượt giới hạn bộ nhớ |
+| `OUTPUT_LIMIT_EXCEEDED` | In quá nhiều dữ liệu |
+| `INTERNAL_ERROR` | Lỗi hệ thống chấm bài (không tính vào lần nộp của người học) |
 
-Each lesson has an `isPreview` flag, **set by the owning instructor**. Preview lessons do not require separate admin review, but they are part of the course that was reviewed. Content fields (video URL, body) of non-preview lessons are **omitted from API responses** for users without a valid enrollment, so URLs cannot leak.
+Quy tắc:
+- Nộp bài tạo bản ghi `QUEUED` ngay và trả về ngay; chấm bài chạy **bất đồng bộ** qua hàng đợi. Giao diện cập nhật trạng thái bằng polling hoặc SSE/WebSocket.
+- Mỗi test case được chạy trong sandbox riêng; điểm bài nộp = tổng trọng số các test case đạt.
+- Với test case **công khai**, người học xem được đầu vào, đầu ra mong đợi và đầu ra thực tế. Với test case **ẩn**, chỉ xem được trạng thái đạt/không đạt, **không** xem được dữ liệu.
+- Chức năng **Chạy thử** (run) chỉ chạy với test mẫu hoặc đầu vào tùy chọn của người học, **không** tạo bài nộp và không ảnh hưởng điểm hay tiến độ.
+- Bài nộp bị kẹt ở `RUNNING` quá thời gian tối đa (mặc định 2 phút) được hệ thống chuyển thành `INTERNAL_ERROR` và có thể chấm lại.
+- Điểm bài tập của người học = điểm cao nhất trong các lần nộp **[Quyết định]**. Mục học được coi là hoàn thành khi có ít nhất một bài nộp `ACCEPTED`.
 
-### 3.5 Progress Calculation
+### 3.4 Bài đánh giá (Assessment)
 
-- Progress is stored per `(user, lesson)` as completed / not completed.
-- Course progress % = completed lessons ÷ total lessons currently in the course, rounded down.
-- When an instructor adds lessons after a student has progressed, the percentage is recalculated against the new total. Removed lessons no longer count.
+Bài đánh giá là một bài kiểm tra có giới hạn thời gian, gồm câu hỏi trắc nghiệm và/hoặc bài tập code, gắn với một khóa học.
 
-### 3.6 Categories
+```
+NOT_STARTED ──bắt đầu──► IN_PROGRESS ──nộp──► SUBMITTED ──chấm xong──► GRADED
+                              │
+                              └──hết giờ──► SUBMITTED (tự động nộp)
+```
 
-Categories are **admin-managed** (create, rename, delete if unused) and seeded with demo data. A course belongs to exactly one category.
+Quy tắc:
+- Cấu hình bài đánh giá: thời lượng, số lần làm tối đa, điểm đạt, thang điểm, ngày mở/đóng.
+- Thời gian làm bài tính **theo đồng hồ máy chủ**; hết giờ hệ thống tự nộp bài với nội dung đã lưu.
+- Câu trắc nghiệm được chấm ngay khi nộp; phần code chấm qua hàng đợi như §3.3. Bài đánh giá chuyển `GRADED` khi mọi phần đã chấm xong.
+- Người học chỉ xem đáp án đúng sau khi bài đánh giá đã `GRADED` và hết số lần làm (hoặc theo cấu hình của giảng viên).
+- Mỗi người học chỉ có **một lần làm đang ở trạng thái `IN_PROGRESS`** cho mỗi bài đánh giá.
+- **[Quyết định]** Chống gian lận trong MVP chỉ ở mức cơ bản: giới hạn thời gian, giới hạn số lần, xáo trộn thứ tự câu hỏi/đáp án và ghi log sự kiện rời tab. Không có giám sát bằng camera hoặc phát hiện đạo văn tự động.
+
+### 3.5 Tiến độ học tập
+
+- Tiến độ lưu theo `(người học, mục học)`: chưa học / hoàn thành.
+- Mục TEXT và VIDEO hoàn thành khi người học đánh dấu; mục CODING hoàn thành khi có bài nộp `ACCEPTED`; mục QUIZ hoàn thành khi đạt điểm đạt.
+- Phần trăm tiến độ khóa học = số mục hoàn thành ÷ tổng số mục hiện có, làm tròn xuống. Khi giảng viên thêm hoặc xóa mục, phần trăm được tính lại theo tổng mới.
+
+### 3.6 Môi trường chạy code (Sandbox)
+
+Mọi mã người dùng được xem là **không đáng tin cậy**. Mỗi lần chạy phải thỏa các ràng buộc sau:
+
+| Ràng buộc | Mặc định MVP |
+|---|---|
+| Cô lập | Container riêng cho mỗi lần chạy, hủy sau khi chạy xong |
+| Mạng | Tắt hoàn toàn |
+| Người dùng trong container | Không phải root, filesystem chỉ đọc trừ thư mục tạm |
+| Thời gian CPU | Tối đa 2 giây mỗi test (cấu hình theo bài, tối đa 10 giây) |
+| Bộ nhớ | Tối đa 256 MB (cấu hình theo bài, tối đa 512 MB) |
+| Số tiến trình | Giới hạn để chặn fork bomb |
+| Kích thước đầu ra | Tối đa 64 KB |
+| Kích thước mã nguồn | Tối đa 64 KB |
 
 ---
 
-## 4. Functional Requirements
+## 4. Yêu cầu chức năng
 
-### 4.1 Authentication and Users
+### 4.1 Xác thực và người dùng
 
-| ID | Requirement |
+| ID | Yêu cầu |
 |---|---|
-| FR-01 | Users can register (email, password, display name, role `STUDENT` or `INSTRUCTOR`) and log in. |
-| FR-02 | Users can log out and view their own profile. |
-| FR-03 | The system enforces role-based permissions on every protected endpoint. |
-| FR-04 | Admin can deactivate and reactivate accounts. A deactivated user cannot log in, and existing tokens stop working immediately. |
-| FR-22 | Users can edit their own profile (display name, bio, avatar URL) and change their password. |
-| FR-23 | Admin can list, search, and filter users by role and status. Admin cannot change roles, delete users, or deactivate themselves or the last remaining active admin. |
+| FR-01 | Người dùng đăng ký (email, mật khẩu, tên hiển thị, vai trò `LEARNER` hoặc `INSTRUCTOR`) và đăng nhập. |
+| FR-02 | Người dùng đăng xuất và xem hồ sơ của mình. |
+| FR-03 | Hệ thống phân quyền theo vai trò trên mọi endpoint được bảo vệ. |
+| FR-04 | Admin vô hiệu hóa và kích hoạt lại tài khoản; token hiện có của tài khoản bị vô hiệu hóa không còn hiệu lực ngay lập tức. |
+| FR-05 | Người dùng chỉnh sửa hồ sơ (tên hiển thị, giới thiệu, ảnh đại diện dạng URL) và đổi mật khẩu. |
+| FR-06 | Admin xem, tìm kiếm, lọc người dùng theo vai trò và trạng thái. Admin không thể tự vô hiệu hóa mình hoặc quản trị viên đang hoạt động cuối cùng. |
 
-### 4.2 Course Discovery
+### 4.2 Khám phá khóa học
 
-| ID | Requirement |
+| ID | Yêu cầu |
 |---|---|
-| FR-05 | Guests can browse published courses. |
-| FR-06 | Users can search by title and filter by category and price range, with sorting (newest, price ascending/descending). |
-| FR-07 | Users can view course details, instructor information, curriculum (section and lesson titles), and preview lessons. |
+| FR-07 | Khách xem danh sách khóa học đã xuất bản. |
+| FR-08 | Tìm kiếm theo tiêu đề; lọc theo danh mục, ngôn ngữ lập trình, độ khó (`BEGINNER`, `INTERMEDIATE`, `ADVANCED`); sắp xếp theo mới nhất hoặc phổ biến. |
+| FR-09 | Xem chi tiết khóa học: mô tả, thông tin giảng viên, đề cương (tên chương và mục), số bài tập, mục học xem thử. |
 
-### 4.3 Course Management
+### 4.3 Quản lý khóa học và nội dung (Giảng viên)
 
-| ID | Requirement |
+| ID | Yêu cầu |
 |---|---|
-| FR-08 | Instructors can create, edit, and delete (per §3.1) their own courses. |
-| FR-09 | Instructors can create, edit, reorder, and remove sections and lessons in their own courses, and mark lessons as preview. |
-| FR-10 | Instructors can submit a `DRAFT` or `REJECTED` course for review. |
-| FR-11 | Admin can approve or reject a `PENDING_REVIEW` course (rejection requires a reason). |
-| FR-24 | Instructors can list their courses and see status and rejection reasons. |
-| FR-25 | Admin can list pending courses, filtered by status. Admin can unpublish a published course. |
-| FR-26 | Admin can create, rename, and delete unused categories. |
+| FR-10 | Giảng viên tạo, sửa và xóa (theo §3.2) khóa học của mình. |
+| FR-11 | Giảng viên tạo, sửa, sắp xếp lại và xóa chương và mục học (TEXT, VIDEO, CODING, QUIZ); đánh dấu mục xem thử. |
+| FR-12 | Giảng viên tạo bài tập CODING: đề bài (Markdown), ngôn ngữ cho phép, mã khởi tạo cho từng ngôn ngữ, giới hạn thời gian/bộ nhớ, gợi ý (hint). |
+| FR-13 | Giảng viên quản lý test case của bài tập: đầu vào, đầu ra mong đợi, trọng số điểm, công khai hoặc ẩn. |
+| FR-14 | Giảng viên khai báo lời giải tham chiếu và chạy kiểm tra thử toàn bộ test case trước khi gửi duyệt. |
+| FR-15 | Giảng viên tạo bộ câu hỏi QUIZ (một hoặc nhiều đáp án, có giải thích). |
+| FR-16 | Giảng viên tạo và cấu hình bài đánh giá (§3.4) từ các câu hỏi và bài tập có sẵn trong khóa học. |
+| FR-17 | Giảng viên gửi khóa học `DRAFT` hoặc `REJECTED` để duyệt; xem danh sách khóa học, trạng thái và lý do từ chối. |
 
-### 4.4 Orders and Payments
+### 4.4 Kiểm duyệt và quản trị
 
-| ID | Requirement |
+| ID | Yêu cầu |
 |---|---|
-| FR-12 | Authenticated learners (students and instructors, per §2) can create an order for a published course they do not own and are not enrolled in. |
-| FR-13 | Learners can complete a mock payment in demo/development environments. |
-| FR-14 | The system records every payment outcome and updates order status accordingly. |
-| FR-15 | A successful, valid payment grants course enrollment exactly once. |
-| FR-16 | Learners can view their own orders and enrolled courses. |
-| FR-27 | Learners can cancel their own `PENDING` orders. The system expires stale pending orders after 30 minutes. |
+| FR-18 | Admin xem danh sách khóa học chờ duyệt, duyệt hoặc từ chối (bắt buộc có lý do khi từ chối). |
+| FR-19 | Admin gỡ xuống (lưu trữ) khóa học đang xuất bản. |
+| FR-20 | Admin tạo, đổi tên, xóa (khi chưa sử dụng) danh mục. |
+| FR-21 | Admin bật/tắt ngôn ngữ lập trình được hỗ trợ và xem cấu hình giới hạn mặc định. |
+| FR-22 | Admin xem thống kê: số người dùng (theo vai trò), khóa học (theo trạng thái), lượt ghi danh, số bài nộp theo verdict, độ dài hàng đợi và thời gian chấm trung bình. |
 
-### 4.5 Learning
+### 4.5 Ghi danh và học tập
 
-| ID | Requirement |
+| ID | Yêu cầu |
 |---|---|
-| FR-17 | Enrolled users can access all lessons of their enrolled courses. |
-| FR-18 | Users without enrollment can access preview lessons only. |
-| FR-19 | Enrolled users can mark lessons complete or incomplete and view course progress (§3.5). |
+| FR-23 | Người học ghi danh vào khóa học đã xuất bản (không phải khóa của chính mình); xem danh sách khóa học đã ghi danh; hủy ghi danh. |
+| FR-24 | Người đã ghi danh truy cập toàn bộ nội dung khóa học; người chưa ghi danh chỉ truy cập mục học xem thử. |
+| FR-25 | Người học đánh dấu hoàn thành mục TEXT/VIDEO và xem tiến độ khóa học (§3.5). |
 
-### 4.6 Administration
+### 4.6 Môi trường thực hành và chấm bài
 
-| ID | Requirement |
+| ID | Yêu cầu |
 |---|---|
-| FR-20 | Admin can view users, courses, and orders (paginated, filterable by status). |
-| FR-21 | Admin can view dashboard statistics: total users (by role), courses (by status), orders (by status), and total paid revenue. |
+| FR-26 | Giao diện soạn code trên trình duyệt (Monaco): tô màu cú pháp, chọn ngôn ngữ, khôi phục mã khởi tạo, **tự động lưu nháp** theo từng bài tập. |
+| FR-27 | Người học **chạy thử** code với test mẫu hoặc đầu vào tùy chọn và xem stdout, stderr, thời gian, bộ nhớ (không tạo bài nộp). |
+| FR-28 | Người học **nộp bài**; hệ thống đưa vào hàng đợi, chấm bất đồng bộ và trả về verdict cùng điểm. |
+| FR-29 | Người học xem kết quả từng test case theo quy tắc hiển thị công khai/ẩn (§3.3) và thông báo lỗi biên dịch/chạy. |
+| FR-30 | Người học xem lịch sử bài nộp của mình theo từng bài tập, kèm mã nguồn đã nộp. |
+| FR-31 | Hệ thống giới hạn tần suất chạy thử và nộp bài theo người dùng (§6). |
+| FR-32 | Hệ thống tự phục hồi bài nộp bị kẹt (§3.3) và cho phép admin hoặc giảng viên chấm lại một bài nộp `INTERNAL_ERROR`. |
+
+### 4.7 Đánh giá và theo dõi
+
+| ID | Yêu cầu |
+|---|---|
+| FR-33 | Người học bắt đầu, làm, lưu nháp và nộp bài đánh giá; hệ thống tự nộp khi hết giờ. |
+| FR-34 | Hệ thống chấm tự động trắc nghiệm và bài code; người học xem điểm và kết quả theo quy tắc §3.4. |
+| FR-35 | Giảng viên xem thống kê khóa học của mình: số người học, tiến độ trung bình, tỉ lệ `ACCEPTED` theo bài tập, điểm trung bình các bài đánh giá, câu hỏi/bài tập có tỉ lệ sai cao. |
+| FR-36 | Giảng viên xem danh sách người học và bài nộp trong khóa học của mình. |
+| FR-37 | Người học xem bảng tổng hợp cá nhân: khóa học đang học, tiến độ, số bài đã giải, điểm các bài đánh giá. |
 
 ---
 
-## 5. Business Rules
+## 5. Quy tắc nghiệp vụ
 
-### Courses and Access
+### Khóa học và truy cập
 
-| ID | Rule |
+| ID | Quy tắc |
 |---|---|
-| BR-01 | Only `PUBLISHED` courses are publicly discoverable. |
-| BR-02 | Instructors can modify only courses they own. |
-| BR-03 | Only admins can approve or reject courses. |
-| BR-08 | An instructor cannot approve their own course (admins and instructors are separate roles; the check is also enforced on course ownership). |
-| BR-09 | Full lesson content requires a valid enrollment, unless the lesson is a preview lesson of a `PUBLISHED` course. Authorization is checked by lesson ID on the server. |
-| BR-13 | Enrollment survives course archiving; archived courses remain accessible to enrolled users. |
-| BR-14 | An instructor cannot purchase or enroll in their own course. |
+| BR-01 | Chỉ khóa học `PUBLISHED` mới được hiển thị công khai và cho phép ghi danh. |
+| BR-02 | Giảng viên chỉ được sửa khóa học, bài tập, test case và bài đánh giá thuộc sở hữu của mình. |
+| BR-03 | Chỉ admin được duyệt hoặc từ chối khóa học; giảng viên không thể duyệt khóa học của chính mình. |
+| BR-04 | Mỗi người dùng chỉ có tối đa một ghi danh cho mỗi khóa học (ràng buộc unique trong CSDL). |
+| BR-05 | Nội dung đầy đủ (đề bài, video, test case, đáp án) chỉ dành cho người đã ghi danh; ngoại lệ là mục học xem thử của khóa học `PUBLISHED`. Quyền được kiểm tra trên máy chủ theo ID của mục học. |
+| BR-06 | Ghi danh vẫn có hiệu lực khi khóa học bị lưu trữ. |
+| BR-07 | Người dùng chỉ truy cập bài nộp, tiến độ, kết quả đánh giá của chính mình; giảng viên chỉ xem dữ liệu của người học trong khóa học mình sở hữu. |
 
-### Orders and Payments
+### Chấm bài và an toàn
 
-| ID | Rule |
+| ID | Quy tắc |
 |---|---|
-| BR-04 | Only `PUBLISHED` courses can be purchased. |
-| BR-05 | The backend calculates prices from trusted database values. Any client-supplied price or amount is ignored. |
-| BR-06 | Enrollment is granted only after valid payment confirmation (matching amount, `PENDING` order, success status). |
-| BR-07 | Each user has at most one enrollment per course (enforced by a unique database constraint). |
-| BR-10 | Repeated payment notifications must not create duplicate enrollments or payments (enforced by a unique `transactionRef`). |
-| BR-11 | Users can access only their own orders and learning progress. |
-| BR-12 | Mock payment exists only in development/demo environments and never represents real money collection. |
-| BR-15 | The order price is a snapshot taken at order creation. |
+| BR-08 | Việc chấm điểm chỉ do máy chủ thực hiện; mọi điểm số, verdict hay trạng thái do client gửi lên đều bị bỏ qua. |
+| BR-09 | Test case ẩn, lời giải tham chiếu và đáp án đúng **không bao giờ** xuất hiện trong phản hồi API dành cho người học (kể cả trong thông báo lỗi). |
+| BR-10 | Mã người dùng chỉ được thực thi trong sandbox đạt các ràng buộc ở §3.6; không bao giờ chạy trong tiến trình của máy chủ API. |
+| BR-11 | Một bài nộp chỉ được chấm một lần cho mỗi lần nộp; chấm lại phải tạo bản ghi kết quả mới có ghi nhận người thực hiện. |
+| BR-12 | Điểm bài tập của người học là điểm cao nhất trong các lần nộp; mục CODING hoàn thành khi có bài nộp `ACCEPTED`. |
+| BR-13 | Bài nộp bị từ chối nếu mã nguồn vượt giới hạn kích thước hoặc ngôn ngữ không được bật cho bài tập đó. |
+| BR-14 | Người học không được nộp vượt giới hạn tần suất; vượt giới hạn trả về lỗi 429. |
+
+### Đánh giá
+
+| ID | Quy tắc |
+|---|---|
+| BR-15 | Thời gian làm bài đánh giá do đồng hồ máy chủ quyết định; nội dung nộp sau thời điểm hết hạn (cộng thời gian du di tối đa 10 giây) bị bỏ qua. |
+| BR-16 | Số lần làm bài đánh giá không vượt quá cấu hình; chỉ một lần làm `IN_PROGRESS` tại một thời điểm. |
+| BR-17 | Đáp án đúng của bài đánh giá chỉ được hiển thị theo quy tắc §3.4. |
 
 ---
 
-## 6. Non-Functional Requirements
+## 6. Yêu cầu phi chức năng
 
-### Security
+### Bảo mật
 
-| ID | Requirement |
+| ID | Yêu cầu |
 |---|---|
-| NFR-01 | Passwords are hashed with bcrypt (cost ≥ 10) or argon2. Minimum password length is 8 characters. |
-| NFR-02 | Protected endpoints enforce authentication and authorization on the server. |
-| NFR-03 | All API inputs are validated with Zod before processing. |
-| NFR-04 | Secrets live in environment variables and are excluded from version control. A `.env.example` is provided. |
-| NFR-11 | **Auth tokens:** short-lived JWT access token (≈15 min) plus a refresh token in an `httpOnly` cookie. Logout revokes the refresh token. The server checks the user's `isActive` flag on each authenticated request. |
-| NFR-12 | Login and registration endpoints are rate-limited. CORS is restricted to the configured frontend origin. Security headers are set (e.g., Helmet). |
-| NFR-13 | If VNPAY Sandbox is implemented, callbacks must be signature-verified and the amount must be verified against the order. |
+| NFR-01 | Mật khẩu được băm bằng bcrypt (cost ≥ 10) hoặc argon2; độ dài tối thiểu 8 ký tự. |
+| NFR-02 | Endpoint được bảo vệ phải kiểm tra xác thực và phân quyền ở phía máy chủ. |
+| NFR-03 | Toàn bộ dữ liệu đầu vào API được kiểm tra bằng Zod trước khi xử lý. |
+| NFR-04 | Bí mật (khóa JWT, thông tin CSDL) lưu trong biến môi trường, không đưa vào Git; có sẵn `.env.example`. |
+| NFR-05 | **Token:** JWT access token ngắn hạn (≈15 phút) kèm refresh token trong cookie `httpOnly`; đăng xuất thu hồi refresh token; máy chủ kiểm tra cờ `isActive` ở mỗi request. |
+| NFR-06 | Giới hạn tần suất cho đăng nhập/đăng ký (ví dụ 10 lần/phút/IP), chạy thử (ví dụ 10 lần/phút/người dùng) và nộp bài (ví dụ 5 lần/phút/người dùng). Cấu hình CORS theo origin của frontend; bật security headers (Helmet). |
+| NFR-07 | **Sandbox:** đáp ứng đầy đủ §3.6; runner chạy tách biệt khỏi máy chủ API và CSDL, không có quyền truy cập secret hay mạng nội bộ. |
+| NFR-08 | Nội dung Markdown của đề bài và bài giảng được làm sạch (sanitize) để chống XSS. |
 
-### Data and Reliability
+### Hiệu năng và độ tin cậy
 
-| ID | Requirement |
+| ID | Yêu cầu |
 |---|---|
-| NFR-05 | Database changes are managed through versioned Prisma migrations. |
-| NFR-06 | Payment confirmation, enrollment creation, and order status changes run in a single database transaction with row locking to handle concurrent callbacks. |
-| NFR-14 | Integrity constraints: unique `(userId, courseId)` on enrollments; unique `transactionRef` on payments; foreign keys on all relations; non-negative amounts. |
+| NFR-09 | API nộp bài phản hồi trong vòng 500 ms (chỉ tạo bản ghi và đưa vào hàng đợi). |
+| NFR-10 | Với bài tập nhỏ (≤ 10 test, mỗi test ≤ 1 giây), có kết quả chấm trong vòng 10 giây ở điều kiện tải bình thường (mục tiêu demo ≥ 20 bài nộp đồng thời). |
+| NFR-11 | Hàng đợi chấm bài có thể mở rộng bằng cách tăng số worker mà không đổi mã nguồn; công việc chấm bài **idempotent** và có cơ chế retry giới hạn. |
+| NFR-12 | Các thao tác nghiệp vụ quan trọng (ghi danh, cập nhật kết quả bài nộp, bắt đầu/nộp bài đánh giá) dùng transaction CSDL khi cần. |
+| NFR-13 | Ràng buộc toàn vẹn: unique `(userId, courseId)` cho ghi danh; unique `(userId, lessonId)` cho tiến độ; khóa ngoại đầy đủ; điểm số không âm. |
 
-### API Quality
+### Chất lượng API và vận hành
 
-| ID | Requirement |
+| ID | Yêu cầu |
 |---|---|
-| NFR-07 | List endpoints are paginated: default page size 10, maximum 50, with `page` and `limit` parameters and total count in the response. |
-| NFR-08 | Errors use one consistent format: `{ "error": { "code": "COURSE_NOT_FOUND", "message": "...", "details": [...] } }` with appropriate HTTP status codes. |
-| NFR-09 | An OpenAPI/Swagger document is served at `/api/docs`. |
-
-### Delivery
-
-| ID | Requirement |
-|---|---|
-| NFR-10 | The project runs locally using documented steps, Docker Compose for PostgreSQL, and seeded demo data (1 admin, 2 instructors, 2 students, categories, and courses in several statuses). |
-| NFR-15 | **Testing:** unit and integration tests cover BR-05, BR-06, BR-07, BR-10, BR-09, and role permissions. Tests run with a single documented command. |
-| NFR-16 | The server logs requests and errors in a structured format. Sensitive data (passwords, tokens) is never logged. |
+| NFR-14 | Các endpoint danh sách có phân trang (mặc định 10, tối đa 50) kèm tổng số bản ghi. |
+| NFR-15 | Lỗi theo định dạng thống nhất: `{ "error": { "code": "SUBMISSION_RATE_LIMITED", "message": "...", "details": [...] } }` với mã HTTP phù hợp. |
+| NFR-16 | Tài liệu OpenAPI/Swagger tại `/api/docs`. |
+| NFR-17 | Thay đổi CSDL quản lý bằng migration Prisma có phiên bản. |
+| NFR-18 | Log có cấu trúc cho request, lỗi và từng lần chấm bài (id bài nộp, verdict, thời gian); không ghi mật khẩu hay token. |
+| NFR-19 | Dự án chạy được cục bộ theo tài liệu với Docker Compose và dữ liệu mẫu: 1 admin, 2 giảng viên, 3 người học, danh mục, khóa học ở nhiều trạng thái, ít nhất 5 bài tập code (Python/JS/C++) có test case công khai và ẩn, 1 bài đánh giá. |
+| NFR-20 | **Kiểm thử:** unit và integration test cho verdict của bộ chấm (đúng, sai, lỗi biên dịch, quá thời gian, quá bộ nhớ), phân quyền, BR-05, BR-09, BR-12, BR-15; có kiểm thử sandbox với mã độc mẫu (vòng lặp vô hạn, fork bomb, truy cập mạng, đọc file hệ thống). Chạy bằng một lệnh được tài liệu hóa. |
 
 ---
 
-## 7. Out of Scope
+## 7. Ngoài phạm vi
 
-The following are excluded from the MVP, and no one should assume they exist:
+Các mục sau **không** nằm trong MVP:
 
-- Live streaming and video conferencing
-- Real-money payment processing
-- Instructor revenue sharing and payouts
-- Complex refunds and dispute management
-- AI-based course recommendations
-- Native mobile applications
-- Advanced digital rights management
-- Shopping cart, coupons, and wishlist
-- Ratings and reviews
-- Certificates
-- Email notifications, email verification, and password reset
-- Free courses
-- File uploads for lesson content (external URLs only)
-- Multiple roles per account
+- Thanh toán, bán khóa học, mã giảm giá, chứng chỉ
+- Phát trực tiếp, hội thảo video, chat thời gian thực
+- Giám sát thi bằng camera, phát hiện đạo văn bằng AI, chống gian lận nâng cao
+- Chấm điểm bằng AI, gợi ý khóa học bằng AI, trợ lý AI hỗ trợ sửa lỗi code
+- Thi đấu lập trình (contest), bảng xếp hạng toàn hệ thống
+- IDE nhiều file, quản lý dự án, terminal tương tác, debugger
+- Môi trường cho framework đầy đủ (web server, cơ sở dữ liệu trong sandbox)
+- Tải tệp video lên hệ thống (chỉ dùng liên kết ngoài)
+- Ứng dụng di động gốc
+- Đánh giá/xếp hạng khóa học, diễn đàn thảo luận
+- Email xác minh, quên mật khẩu, thông báo email
+- Nhiều vai trò trên một tài khoản
 
 ---
 
-## 8. Acceptance Criteria
+## 8. Tiêu chí chấp nhận
 
-### Access and Discovery
+### Truy cập và khám phá
 
-| ID | Criterion |
+| ID | Tiêu chí |
 |---|---|
-| AC-01 | A guest can browse published courses but cannot access non-preview lessons. |
-| AC-02 | Courses that are not `PUBLISHED` do not appear in public listing, search, or detail endpoints. |
-| AC-03 | Search, filter, sort, and pagination return correct results and respect the page-size limit. |
+| AC-01 | Khách xem được danh sách khóa học đã xuất bản nhưng không truy cập được nội dung mục học không xem thử. |
+| AC-02 | Khóa học không ở trạng thái `PUBLISHED` không xuất hiện trong danh sách, tìm kiếm hay chi tiết công khai. |
+| AC-03 | Tìm kiếm, lọc, sắp xếp và phân trang trả kết quả đúng và tôn trọng giới hạn kích thước trang. |
 
-### Course Management
+### Quản lý nội dung
 
-| ID | Criterion |
+| ID | Tiêu chí |
 |---|---|
-| AC-04 | An instructor can create a course and submit it for review. |
-| AC-05 | An instructor cannot edit another instructor's course (403). |
-| AC-06 | An admin can approve a pending course (it becomes `PUBLISHED`) or reject it with a reason, which the instructor can see. |
-| AC-07 | An instructor cannot approve their own course. |
-| AC-08 | A course with no lessons cannot be submitted for review. |
+| AC-04 | Giảng viên tạo được khóa học có bài tập code và test case (công khai và ẩn), rồi gửi duyệt. |
+| AC-05 | Giảng viên không sửa được khóa học, bài tập hay test case của giảng viên khác (403). |
+| AC-06 | Khóa học thiếu mục học, hoặc có bài code chưa có test case ẩn, không gửi duyệt được. |
+| AC-07 | Admin duyệt khóa học (thành `PUBLISHED`) hoặc từ chối kèm lý do mà giảng viên xem được. |
+| AC-08 | Giảng viên không thể duyệt khóa học của chính mình. |
 
-### Orders and Payments
+### Học tập và thực hành
 
-| ID | Criterion |
+| ID | Tiêu chí |
 |---|---|
-| AC-09 | A learner can create an order for a published course; a non-published course cannot be purchased. |
-| AC-10 | A tampered price or amount in a client request is ignored; the server uses the stored course price. |
-| AC-11 | A failed, expired, or unconfirmed payment does not grant enrollment. |
-| AC-12 | A successful mock payment grants enrollment exactly once. |
-| AC-13 | Replaying the same payment notification creates one enrollment, one payment record, and no error. |
-| AC-14 | A callback whose amount does not match the order is rejected and grants nothing. |
-| AC-15 | A user cannot order a course they are already enrolled in, nor an instructor their own course. |
-| AC-16 | Mock payment endpoints are unavailable when the environment is production. |
+| AC-09 | Người học ghi danh khóa học đã xuất bản đúng một lần; ghi danh lặp không tạo bản ghi trùng. |
+| AC-10 | Giảng viên không ghi danh được vào khóa học của chính mình. |
+| AC-11 | Người chưa ghi danh không đọc được đề bài, video hay test case của mục không xem thử khi đoán ID hoặc URL. |
+| AC-12 | Người học viết code trên trình duyệt, chạy thử và thấy stdout/stderr; chạy thử không tạo bài nộp. |
+| AC-13 | Nháp code được tự động lưu và khôi phục khi mở lại bài tập. |
+| AC-14 | Khóa học đã lưu trữ vẫn truy cập được với người đã ghi danh. |
 
-### Learning and Privacy
+### Chấm bài
 
-| ID | Criterion |
+| ID | Tiêu chí |
 |---|---|
-| AC-17 | An enrolled user can access full lessons and save learning progress. |
-| AC-18 | A non-enrolled user cannot access full lesson content by guessing a lesson ID or URL. |
-| AC-19 | Users cannot access other users' orders or progress. |
-| AC-20 | Archiving a course does not remove access for enrolled users. |
+| AC-15 | Lời giải đúng cho verdict `ACCEPTED`; lời giải sai một phần cho `PARTIAL` hoặc `WRONG_ANSWER` với điểm tương ứng trọng số. |
+| AC-16 | Mã có lỗi cú pháp trả `COMPILE_ERROR` kèm thông báo lỗi; mã ném exception trả `RUNTIME_ERROR`. |
+| AC-17 | Vòng lặp vô hạn trả `TIME_LIMIT_EXCEEDED`; cấp phát bộ nhớ quá mức trả `MEMORY_LIMIT_EXCEEDED`; máy chủ vẫn hoạt động bình thường. |
+| AC-18 | Mã cố truy cập mạng, đọc file ngoài thư mục cho phép hoặc tạo quá nhiều tiến trình bị chặn và không ảnh hưởng hệ thống. |
+| AC-19 | Điểm, verdict hoặc trạng thái do client gửi lên bị bỏ qua; kết quả luôn do máy chủ tính. |
+| AC-20 | Phản hồi API cho người học không chứa dữ liệu test ẩn, lời giải tham chiếu hay đáp án đúng. |
+| AC-21 | Nộp bài trả về ngay trạng thái `QUEUED`, sau đó kết quả cập nhật trên giao diện mà không cần tải lại trang. |
+| AC-22 | Vượt giới hạn tần suất nộp bài nhận lỗi 429. |
+| AC-23 | Bài nộp bị kẹt quá thời gian tối đa được chuyển `INTERNAL_ERROR` và có thể chấm lại. |
+| AC-24 | Mục CODING được tính hoàn thành khi có ít nhất một bài nộp `ACCEPTED`; tiến độ khóa học hiển thị đúng. |
 
-### Accounts and Administration
+### Đánh giá
 
-| ID | Criterion |
+| ID | Tiêu chí |
 |---|---|
-| AC-21 | A deactivated user cannot log in, and their existing tokens are rejected. |
-| AC-22 | Registration cannot create an admin account. |
-| AC-23 | An admin cannot deactivate themselves or the last active admin. |
-| AC-24 | Admin dashboard statistics match the database counts. |
+| AC-25 | Người học làm bài đánh giá có giới hạn thời gian; hết giờ hệ thống tự nộp bài đã lưu. |
+| AC-26 | Nội dung gửi sau khi hết hạn (quá thời gian du di) bị bỏ qua. |
+| AC-27 | Người học không bắt đầu được lần làm mới khi đã hết số lần cho phép, hoặc khi đang có một lần `IN_PROGRESS`. |
+| AC-28 | Đáp án đúng không hiển thị trước khi bài đánh giá được `GRADED` và theo cấu hình. |
 
-### Delivery
+### Tài khoản và quản trị
 
-| ID | Criterion |
+| ID | Tiêu chí |
 |---|---|
-| AC-25 | The project can be installed and demonstrated from the README instructions alone, using seeded data. |
-| AC-26 | The automated test suite passes with one documented command. |
+| AC-29 | Người dùng không xem được bài nộp, tiến độ hay kết quả của người khác; giảng viên chỉ xem được người học trong khóa học của mình. |
+| AC-30 | Tài khoản bị vô hiệu hóa không đăng nhập được và token cũ bị từ chối. |
+| AC-31 | Đăng ký không tạo được tài khoản admin. |
+| AC-32 | Admin không tự vô hiệu hóa mình hoặc quản trị viên hoạt động cuối cùng. |
+| AC-33 | Thống kê của admin và giảng viên khớp với số liệu trong CSDL. |
+
+### Bàn giao
+
+| ID | Tiêu chí |
+|---|---|
+| AC-34 | Có thể cài đặt và demo toàn bộ hệ thống chỉ bằng hướng dẫn trong README với dữ liệu mẫu. |
+| AC-35 | Bộ kiểm thử tự động (gồm kiểm thử sandbox) chạy thành công bằng một lệnh được tài liệu hóa. |
 
 ---
 
-## 9. Traceability Matrix
+## 9. Ma trận truy vết
 
-| Acceptance Criterion | Functional Req. | Business Rules / NFRs |
+| Tiêu chí | Yêu cầu chức năng | Quy tắc / NFR |
 |---|---|---|
-| AC-01 | FR-05, FR-18 | BR-01, BR-09 |
-| AC-02 | FR-05, FR-07 | BR-01 |
-| AC-03 | FR-06 | NFR-07 |
-| AC-04 | FR-08, FR-09, FR-10 | BR-02 |
-| AC-05 | FR-08, FR-09 | BR-02, NFR-02 |
-| AC-06 | FR-11, FR-24 | BR-03 |
-| AC-07 | FR-11 | BR-03, BR-08 |
-| AC-08 | FR-10 | §3.1 |
-| AC-09 | FR-12 | BR-04 |
-| AC-10 | FR-12 | BR-05, BR-15 |
-| AC-11 | FR-14, FR-27 | BR-06 |
-| AC-12 | FR-13, FR-15 | BR-06, BR-07, NFR-06 |
-| AC-13 | FR-15 | BR-10, NFR-14 |
-| AC-14 | FR-14 | BR-06, NFR-13 |
-| AC-15 | FR-12 | BR-07, BR-14 |
-| AC-16 | FR-13 | BR-12 |
-| AC-17 | FR-17, FR-19 | BR-09 |
-| AC-18 | FR-17, FR-18 | BR-09, NFR-02 |
-| AC-19 | FR-16, FR-19 | BR-11 |
-| AC-20 | FR-17 | BR-13 |
-| AC-21 | FR-04 | NFR-11 |
-| AC-22 | FR-01, FR-03 | NFR-02 |
-| AC-23 | FR-23 | — |
-| AC-24 | FR-21 | — |
-| AC-25 | — | NFR-09, NFR-10 |
-| AC-26 | — | NFR-15 |
+| AC-01 | FR-07, FR-24 | BR-01, BR-05 |
+| AC-02 | FR-07, FR-09 | BR-01 |
+| AC-03 | FR-08 | NFR-14 |
+| AC-04 | FR-10 – FR-14, FR-17 | BR-02 |
+| AC-05 | FR-10 – FR-13 | BR-02, NFR-02 |
+| AC-06 | FR-17 | §3.2 |
+| AC-07 | FR-18, FR-17 | BR-03 |
+| AC-08 | FR-18 | BR-03 |
+| AC-09 | FR-23 | BR-04, NFR-13 |
+| AC-10 | FR-23 | §2 |
+| AC-11 | FR-24 | BR-05, BR-09, NFR-02 |
+| AC-12 | FR-26, FR-27 | §3.3 |
+| AC-13 | FR-26 | — |
+| AC-14 | FR-24, FR-19 | BR-06 |
+| AC-15 | FR-28, FR-29 | BR-08, BR-12 |
+| AC-16 | FR-28, FR-29 | §3.3 |
+| AC-17 | FR-28 | BR-10, NFR-07 |
+| AC-18 | FR-28 | BR-10, NFR-07 |
+| AC-19 | FR-28 | BR-08 |
+| AC-20 | FR-29 | BR-09 |
+| AC-21 | FR-28 | NFR-09, NFR-11 |
+| AC-22 | FR-31 | BR-14, NFR-06 |
+| AC-23 | FR-32 | §3.3, NFR-11 |
+| AC-24 | FR-25, FR-28 | BR-12 |
+| AC-25 | FR-33 | BR-15 |
+| AC-26 | FR-33 | BR-15 |
+| AC-27 | FR-33 | BR-16 |
+| AC-28 | FR-34 | BR-17 |
+| AC-29 | FR-30, FR-36, FR-37 | BR-07 |
+| AC-30 | FR-04 | NFR-05 |
+| AC-31 | FR-01, FR-03 | NFR-02 |
+| AC-32 | FR-06 | — |
+| AC-33 | FR-22, FR-35 | — |
+| AC-34 | — | NFR-16, NFR-19 |
+| AC-35 | — | NFR-20 |
 
 ---
 
-## 10. Open Questions
+## 10. Câu hỏi mở
 
-These need a product decision, but the defaults above let development proceed.
+Các điểm cần quyết định thêm; mặc định ở trên cho phép bắt đầu phát triển.
 
-1. Should edits to a published course ever require re-review (currently: no)?
-2. Is a 30-minute order expiry appropriate, and should expiry run as a scheduled job or lazily on access?
-3. Should the UI language be Vietnamese rather than English?
-4. Should free courses be added after the MVP, and should they bypass payment?
-5. Is VNPAY Sandbox in scope for the demo, or only the mock?
+1. Dùng **Judge0 tự host** (nhanh triển khai, hỗ trợ nhiều ngôn ngữ) hay **tự xây runner bằng Docker** (kiểm soát hơn, chứng minh kỹ thuật tốt hơn cho đồ án)?
+2. Nên hỗ trợ chấm lại tự động toàn bộ bài nộp cũ khi giảng viên sửa test case không?
+3. Có cần bài tập dạng **điền vào chỗ trống/sửa lỗi code** ngoài viết hàm đầy đủ không?
+4. Cách chấm so sánh đầu ra: so khớp chính xác, bỏ qua khoảng trắng cuối dòng, hay hỗ trợ checker tùy chỉnh?
+5. Điểm bài tập: lấy điểm cao nhất (mặc định) hay lần nộp cuối?
+6. Giao diện cần hỗ trợ cả tiếng Anh ngay từ MVP không?
