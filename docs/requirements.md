@@ -4,11 +4,26 @@
 
 | | |
 |---|---|
-| **Phiên bản** | 1.0 |
+| **Phiên bản** | 1.1 |
 | **Trạng thái** | Bản nháp để review |
 | **Phạm vi** | MVP |
 
 > Các mục đánh dấu **[Quyết định]** là các giả định mặc định nhằm giải quyết điểm chưa rõ. Có thể thay đổi, nhưng nên xác nhận trước khi triển khai.
+
+**Thay đổi chính so với v1.0**
+
+| Nội dung | Thay đổi |
+|---|---|
+| §2 | Giảng viên có quyền học khóa học của người khác; admin xem bài nộp `INTERNAL_ERROR` |
+| §3.1 | Thêm Bài đánh giá vào mô hình nội dung; mục QUIZ có điểm đạt |
+| §3.2 | Điều kiện gửi duyệt gồm QUIZ; bất biến khi sửa khóa `PUBLISHED`; điều kiện xóa cứng |
+| §3.3 | Quy tắc xác định verdict; xử lý bài `QUEUED` kẹt; chấm lại |
+| §3.4 | Hạn nộp, tiếp tục làm bài, điểm cao nhất, khóa nội dung, xử lý `INTERNAL_ERROR` |
+| §3.5 | Tiến độ mục QUIZ; tiến độ giữ khi hủy ghi danh |
+| §4 | Sửa FR-14, FR-15, FR-16, FR-23, FR-32; thêm FR-38 |
+| §5 | Sửa BR-05, BR-07, BR-09, BR-17; thêm BR-18, BR-19, BR-20 |
+| §8, §9 | Sửa AC-23; thêm AC-36 đến AC-45 và cập nhật ma trận truy vết |
+| §10 | Bỏ câu hỏi về điểm bài tập (đã chốt ở BR-12); thêm 3 câu hỏi mới |
 
 ## Mục lục
 
@@ -68,8 +83,8 @@ Mỗi tài khoản có đúng một vai trò chính: `LEARNER`, `INSTRUCTOR` ho�
 |---|---|
 | **Khách (Guest)** | Xem danh sách khóa học đã xuất bản; tìm kiếm, lọc; xem chi tiết khóa học và bài học xem thử; đăng ký, đăng nhập. |
 | **Người học (Learner)** | Mọi quyền của khách; ghi danh khóa học; học bài; viết, chạy thử và nộp code; làm bài đánh giá; xem tiến độ, lịch sử nộp bài và kết quả của mình. |
-| **Giảng viên (Instructor)** | Tạo và quản lý **khóa học của mình**: chương, bài học, bài tập code (kèm test case), bài đánh giá; gửi khóa học để duyệt; xem kết quả duyệt; xem thống kê và bài nộp của người học trong khóa học của mình. Không thể duyệt khóa học hoặc sửa nội dung của giảng viên khác. Có thể học khóa học của giảng viên khác với các quyền như Người học (xem [Quyết định] bên dưới). |
-| **Quản trị viên (Admin)** | Quản lý người dùng; duyệt hoặc từ chối khóa học; quản lý danh mục và ngôn ngữ chạy code; xem thống kê hệ thống; theo dõi hàng đợi chấm bài. Xem danh sách bài nộp `INTERNAL_ERROR` trên toàn hệ thống để chấm lại (FR-32); xem nội dung đầy đủ của khóa học chờ duyệt. |
+| **Giảng viên (Instructor)** | Tạo và quản lý **khóa học của mình**: chương, bài học, bài tập code (kèm test case), bài đánh giá; gửi khóa học để duyệt; xem kết quả duyệt; xem thống kê và bài nộp của người học trong khóa học của mình. Có thể học khóa học của giảng viên khác với các quyền như Người học (xem [Quyết định] bên dưới). Không thể duyệt khóa học hoặc sửa nội dung của giảng viên khác. |
+| **Quản trị viên (Admin)** | Quản lý người dùng; duyệt hoặc từ chối khóa học (xem được toàn bộ nội dung khóa học chờ duyệt); quản lý danh mục và ngôn ngữ chạy code; xem thống kê hệ thống; theo dõi hàng đợi chấm bài; xem danh sách bài nộp `INTERNAL_ERROR` trên toàn hệ thống để chấm lại (FR-32). |
 
 **[Quyết định]** Tài khoản Admin chỉ được tạo bằng seed script. Đăng ký công khai chỉ cho phép `LEARNER` hoặc `INSTRUCTOR`. Giảng viên có thể ghi danh và học khóa học của giảng viên **khác** với đầy đủ quyền của Người học, nhưng không ghi danh vào khóa học của chính mình. Quản trị viên không có quyền học tập.
 
@@ -112,12 +127,12 @@ DRAFT ──gửi duyệt──► PENDING_REVIEW ──duyệt──► PUBLISH
 | `ARCHIVED` | Không | Không | Không |
 
 Quy tắc:
+
 - **[Quyết định]** Duyệt khóa học đồng nghĩa với xuất bản (chuyển thẳng sang `PUBLISHED`).
 - Từ chối **bắt buộc có lý do** (10–1000 ký tự); giảng viên xem được lý do và có thể gửi lại.
-- Chỉ gửi duyệt được khi khóa học có đủ tiêu đề, mô tả, danh mục, ít nhất một chương có ít nhất một mục học; **mỗi bài CODING có ít nhất một test case ẩn** cùng một lời giải tham chiếu đã vượt qua toàn bộ test case; **mỗi mục QUIZ có ít nhất một câu hỏi hợp lệ**.
+- Chỉ gửi duyệt được khi khóa học có đủ tiêu đề, mô tả, danh mục, ít nhất một chương có ít nhất một mục học; **mỗi bài CODING có ít nhất một test case ẩn** cùng lời giải tham chiếu (cho từng ngôn ngữ được phép) đã vượt qua toàn bộ test case; **mỗi mục QUIZ có ít nhất một câu hỏi hợp lệ** (FR-15).
 - Sửa khóa học `PUBLISHED` được áp dụng ngay, không cần duyệt lại trong MVP, **với điều kiện** mỗi lần lưu vẫn giữ các điều kiện gửi duyệt ở trên: bài CODING còn ít nhất một test ẩn và lời giải tham chiếu vẫn đạt toàn bộ test; mục QUIZ còn ít nhất một câu hỏi hợp lệ. Lưu vi phạm bị từ chối. Quản trị viên có thể gỡ xuống bất cứ lúc nào.
-- Chỉ xóa cứng được khóa học ở `DRAFT` hoặc `REJECTED` chưa có ghi danh nào; các trường hợp còn lại chỉ có thể lưu trữ.
-- Khóa học đã có học viên ghi danh **không thể bị xóa cứng**, chỉ có thể lưu trữ. Học viên đã ghi danh **vẫn giữ quyền truy cập** sau khi khóa học bị lưu trữ.
+- Chỉ xóa cứng được khóa học ở `DRAFT` hoặc `REJECTED` (chưa từng có ghi danh). Khóa học ở trạng thái khác không xóa được; chỉ admin lưu trữ được khóa học `PUBLISHED`. Học viên đã ghi danh **vẫn giữ quyền truy cập** sau khi khóa học bị lưu trữ.
 - Khi giảng viên sửa test case hoặc đề bài của bài tập đã có bài nộp, các bài nộp cũ **giữ nguyên kết quả** đã chấm (không chấm lại tự động).
 
 ### 3.3 Vòng đời bài nộp (Submission)
@@ -133,8 +148,8 @@ Kết quả cuối (verdict):
 | Verdict | Ý nghĩa |
 |---|---|
 | `ACCEPTED` | Đúng toàn bộ test case |
-| `PARTIAL` | Có ít nhất một test đạt; các test còn lại sai đầu ra |
-| `WRONG_ANSWER` | Không có test nào đạt và lỗi là sai đầu ra |
+| `PARTIAL` | Có ít nhất một test đạt; test không đạt đầu tiên là sai đầu ra |
+| `WRONG_ANSWER` | Không có test nào đạt; test không đạt đầu tiên là sai đầu ra |
 | `COMPILE_ERROR` | Lỗi biên dịch / cú pháp |
 | `RUNTIME_ERROR` | Lỗi khi chạy (exception, exit code khác 0) |
 | `TIME_LIMIT_EXCEEDED` | Vượt giới hạn thời gian |
@@ -143,12 +158,16 @@ Kết quả cuối (verdict):
 | `INTERNAL_ERROR` | Lỗi hệ thống chấm bài (không tính vào lần nộp của người học) |
 
 **Quy tắc xác định verdict cuối:**
-1. Lỗi biên dịch → `COMPILE_ERROR`, điểm 0.
-2. Mọi test đạt → `ACCEPTED`.
-3. Ngược lại, xét test không đạt **đầu tiên theo thứ tự test**: nếu là sai đầu ra thì `PARTIAL` (có ít nhất một test đạt) hoặc `WRONG_ANSWER` (không test nào đạt); nếu là lỗi khác thì verdict là loại lỗi đó (`RUNTIME_ERROR`, `TIME_LIMIT_EXCEEDED`, `MEMORY_LIMIT_EXCEEDED`, `OUTPUT_LIMIT_EXCEEDED`).
+
+1. Lỗi hạ tầng ở bất kỳ test nào (sau khi đã thử lại có giới hạn) → `INTERNAL_ERROR` cho cả bài nộp.
+2. Lỗi biên dịch → `COMPILE_ERROR`, điểm 0.
+3. Mọi test đạt → `ACCEPTED`.
+4. Ngược lại, xét test không đạt **đầu tiên theo thứ tự test**: nếu là sai đầu ra thì `PARTIAL` (có ít nhất một test đạt) hoặc `WRONG_ANSWER` (không test nào đạt); nếu là lỗi khác thì verdict là loại lỗi đó (`RUNTIME_ERROR`, `TIME_LIMIT_EXCEEDED`, `MEMORY_LIMIT_EXCEEDED`, `OUTPUT_LIMIT_EXCEEDED`).
+
 Điểm luôn bằng tổng trọng số các test đạt, bất kể verdict.
 
 Quy tắc:
+
 - Nộp bài tạo bản ghi `QUEUED` ngay và trả về ngay; chấm bài chạy **bất đồng bộ** qua hàng đợi. Giao diện cập nhật trạng thái bằng polling hoặc SSE/WebSocket.
 - Mỗi test case được chạy trong sandbox riêng; điểm bài nộp = tổng trọng số các test case đạt.
 - Với test case **công khai**, người học xem được đầu vào, đầu ra mong đợi và đầu ra thực tế. Với test case **ẩn**, chỉ xem được trạng thái đạt/không đạt, **không** xem được dữ liệu.
@@ -167,18 +186,17 @@ NOT_STARTED ──bắt đầu──► IN_PROGRESS ──nộp──► SUBMITT
 ```
 
 Quy tắc:
-- Cấu hình bài đánh giá: thời lượng, số lần làm tối đa, điểm đạt, thang điểm, ngày mở/đóng.
+
+- Cấu hình bài đánh giá: thời lượng, số lần làm tối đa, điểm đạt, thang điểm, ngày mở/đóng, xáo trộn thứ tự câu hỏi/đáp án, chế độ hiển thị đáp án.
 - Thời gian làm bài tính **theo đồng hồ máy chủ**; hết giờ hệ thống tự nộp bài với nội dung đã lưu.
-- Câu trắc nghiệm được chấm ngay khi nộp; phần code chấm qua hàng đợi như §3.3. Bài đánh giá chuyển `GRADED` khi mọi phần đã chấm xong.
-- Người học chỉ xem đáp án đúng sau khi bài đánh giá đã `GRADED` và hết số lần làm (hoặc theo cấu hình của giảng viên).
-- Mỗi người học chỉ có **một lần làm đang ở trạng thái `IN_PROGRESS`** cho mỗi bài đánh giá.
-- **[Quyết định]** Chống gian lận trong MVP chỉ ở mức cơ bản: giới hạn thời gian, giới hạn số lần, xáo trộn thứ tự câu hỏi/đáp án và ghi log sự kiện rời tab. Không có giám sát bằng camera hoặc phát hiện đạo văn tự động.
 - Hạn nộp của lần làm là thời điểm sớm hơn giữa (thời điểm bắt đầu + thời lượng) và ngày đóng.
 - Người học quay lại khi đang có lần làm `IN_PROGRESS` thì tiếp tục lần làm đó với nháp đã lưu; đồng hồ vẫn tính theo máy chủ.
-- Điểm của bài đánh giá là điểm **cao nhất** trong các lần làm (BR-19).
-- Code nộp trong bài đánh giá không tạo bài nộp ở lịch sử bài tập và không ảnh hưởng tiến độ hay điểm của mục CODING.
-- Phần code gặp `INTERNAL_ERROR` thì lần làm giữ nguyên chờ chấm lại, chưa chuyển `GRADED`.
+- Câu trắc nghiệm được chấm ngay khi nộp; phần code chấm qua hàng đợi như §3.3. Bài đánh giá chuyển `GRADED` khi mọi phần đã chấm xong. Nếu phần code gặp `INTERNAL_ERROR` thì lần làm giữ nguyên chờ chấm lại, chưa chuyển `GRADED`.
+- Điểm của bài đánh giá là điểm **cao nhất** trong các lần làm (BR-19). Code nộp trong bài đánh giá không tạo bài nộp ở lịch sử bài tập và không ảnh hưởng tiến độ hay điểm của mục CODING.
+- Người học chỉ xem đáp án đúng sau khi bài đánh giá đã `GRADED` và hết số lần làm (hoặc theo cấu hình của giảng viên).
+- Mỗi người học chỉ có **một lần làm đang ở trạng thái `IN_PROGRESS`** cho mỗi bài đánh giá.
 - Bài đánh giá đã có lần làm thì khóa nội dung và cấu hình; chỉ cho gia hạn ngày đóng (BR-20).
+- **[Quyết định]** Chống gian lận trong MVP chỉ ở mức cơ bản: giới hạn thời gian, giới hạn số lần, xáo trộn thứ tự câu hỏi/đáp án và ghi log sự kiện rời tab. Không có giám sát bằng camera hoặc phát hiện đạo văn tự động.
 
 ### 3.5 Tiến độ học tập
 
@@ -256,6 +274,7 @@ Mọi mã người dùng được xem là **không đáng tin cậy**. Mỗi l�
 | FR-23 | Người học ghi danh vào khóa học đã xuất bản (không phải khóa của chính mình); xem danh sách khóa học đã ghi danh; hủy ghi danh (tiến độ và bài nộp được giữ lại). |
 | FR-24 | Người đã ghi danh truy cập toàn bộ nội dung khóa học; người chưa ghi danh chỉ truy cập mục học xem thử. |
 | FR-25 | Người học đánh dấu hoàn thành mục TEXT/VIDEO và xem tiến độ khóa học (§3.5). |
+| FR-38 | Người học làm mục QUIZ: chọn đáp án, nộp, được chấm ngay, xem điểm và kết quả từng câu, làm lại không giới hạn; mục hoàn thành khi đạt điểm đạt (§3.5). |
 
 ### 4.6 Môi trường thực hành và chấm bài
 
@@ -278,7 +297,6 @@ Mọi mã người dùng được xem là **không đáng tin cậy**. Mỗi l�
 | FR-35 | Giảng viên xem thống kê khóa học của mình: số người học, tiến độ trung bình, tỉ lệ `ACCEPTED` theo bài tập, điểm trung bình các bài đánh giá, câu hỏi/bài tập có tỉ lệ sai cao. |
 | FR-36 | Giảng viên xem danh sách người học và bài nộp trong khóa học của mình. |
 | FR-37 | Người học xem bảng tổng hợp cá nhân: khóa học đang học, tiến độ, số bài đã giải, điểm các bài đánh giá. |
-| FR-38 | Người học làm mục QUIZ: chọn đáp án, nộp, được chấm ngay, xem điểm và kết quả từng câu, làm lại không giới hạn; mục hoàn thành khi đạt điểm đạt (§3.5). |
 
 ---
 
@@ -301,7 +319,7 @@ Mọi mã người dùng được xem là **không đáng tin cậy**. Mỗi l�
 | ID | Quy tắc |
 |---|---|
 | BR-08 | Việc chấm điểm chỉ do máy chủ thực hiện; mọi điểm số, verdict hay trạng thái do client gửi lên đều bị bỏ qua. |
-| BR-09 | Test case ẩn, lời giải tham chiếu và đáp án đúng **không bao giờ** xuất hiện trong phản hồi API dành cho người học (kể cả trong thông báo lỗi). Ngoại lệ: sau khi người học nộp mục QUIZ, đáp án đúng và giải thích được hiển thị (FR-38). |
+| BR-09 | Test case ẩn, lời giải tham chiếu và đáp án đúng **không bao giờ** xuất hiện trong phản hồi API dành cho người học (kể cả trong thông báo lỗi). Ngoại lệ: đáp án đúng và giải thích của mục QUIZ được hiển thị sau khi người học nộp (FR-38); đáp án đúng của bài đánh giá hiển thị theo BR-17. |
 | BR-10 | Mã người dùng chỉ được thực thi trong sandbox đạt các ràng buộc ở §3.6; không bao giờ chạy trong tiến trình của máy chủ API. |
 | BR-11 | Một bài nộp chỉ được chấm một lần cho mỗi lần nộp; chấm lại phải tạo bản ghi kết quả mới có ghi nhận người thực hiện. |
 | BR-12 | Điểm bài tập của người học là điểm cao nhất trong các lần nộp; mục CODING hoàn thành khi có bài nộp `ACCEPTED`. |
@@ -398,6 +416,8 @@ Các mục sau **không** nằm trong MVP:
 | AC-06 | Khóa học thiếu mục học, hoặc có bài code chưa có test case ẩn, không gửi duyệt được. |
 | AC-07 | Admin duyệt khóa học (thành `PUBLISHED`) hoặc từ chối kèm lý do mà giảng viên xem được. |
 | AC-08 | Giảng viên không thể duyệt khóa học của chính mình. |
+| AC-38 | Câu hỏi không hợp lệ (dưới 2 lựa chọn, không có đáp án đúng, câu một đáp án có nhiều đáp án đúng) không lưu được. |
+| AC-43 | Lưu khóa học `PUBLISHED` bị từ chối nếu bài CODING mất test ẩn hoặc lời giải tham chiếu không còn đạt, hoặc mục QUIZ không còn câu hỏi hợp lệ. |
 
 ### Học tập và thực hành
 
@@ -409,6 +429,9 @@ Các mục sau **không** nằm trong MVP:
 | AC-12 | Người học viết code trên trình duyệt, chạy thử và thấy stdout/stderr; chạy thử không tạo bài nộp. |
 | AC-13 | Nháp code được tự động lưu và khôi phục khi mở lại bài tập. |
 | AC-14 | Khóa học đã lưu trữ vẫn truy cập được với người đã ghi danh. |
+| AC-36 | Người học nộp mục QUIZ nhận điểm và kết quả từng câu ngay; điểm và đúng/sai do client gửi bị bỏ qua. |
+| AC-37 | Mục QUIZ hoàn thành khi đạt điểm đạt; làm lại với điểm thấp hơn không làm mất trạng thái hoàn thành. |
+| AC-45 | Chủ khóa học và admin xem được nội dung đầy đủ của khóa học; người chưa ghi danh vẫn không xem được (AC-11). |
 
 ### Chấm bài
 
@@ -424,6 +447,7 @@ Các mục sau **không** nằm trong MVP:
 | AC-22 | Vượt giới hạn tần suất nộp bài nhận lỗi 429. |
 | AC-23 | Bài nộp kẹt ở `RUNNING` quá thời gian tối đa được chuyển `INTERNAL_ERROR`; bài `QUEUED` kẹt được đưa lại hàng đợi, vượt số lần cho phép thì `INTERNAL_ERROR`; giảng viên (khóa của mình) và admin chấm lại được. |
 | AC-24 | Mục CODING được tính hoàn thành khi có ít nhất một bài nộp `ACCEPTED`; tiến độ khóa học hiển thị đúng. |
+| AC-44 | Verdict cuối tuân theo quy tắc ưu tiên §3.3; điểm bằng tổng trọng số các test đạt. |
 
 ### Đánh giá
 
@@ -433,6 +457,8 @@ Các mục sau **không** nằm trong MVP:
 | AC-26 | Nội dung gửi sau khi hết hạn (quá thời gian du di) bị bỏ qua. |
 | AC-27 | Người học không bắt đầu được lần làm mới khi đã hết số lần cho phép, hoặc khi đang có một lần `IN_PROGRESS`. |
 | AC-28 | Đáp án đúng không hiển thị trước khi bài đánh giá được `GRADED` và theo cấu hình. |
+| AC-39 | Bài đánh giá chỉ chứa câu hỏi và bài tập hợp lệ; sau khi có lần làm chỉ gia hạn được ngày đóng; sửa mục học gốc không ảnh hưởng bài đánh giá. |
+| AC-40 | Điểm bài đánh giá là điểm cao nhất; code trong bài đánh giá không đổi tiến độ hay điểm mục CODING. |
 
 ### Tài khoản và quản trị
 
@@ -443,6 +469,8 @@ Các mục sau **không** nằm trong MVP:
 | AC-31 | Đăng ký không tạo được tài khoản admin. |
 | AC-32 | Admin không tự vô hiệu hóa mình hoặc quản trị viên hoạt động cuối cùng. |
 | AC-33 | Thống kê của admin và giảng viên khớp với số liệu trong CSDL. |
+| AC-41 | Người dùng (cả Admin) xem và sửa được hồ sơ, đổi mật khẩu với mật khẩu cũ đúng, và đăng xuất thu hồi phiên. |
+| AC-42 | Admin tạo, đổi tên, xóa danh mục chưa dùng, bật/tắt ngôn ngữ lập trình; thao tác sai bị từ chối với thông báo rõ. |
 
 ### Bàn giao
 
@@ -450,16 +478,7 @@ Các mục sau **không** nằm trong MVP:
 |---|---|
 | AC-34 | Có thể cài đặt và demo toàn bộ hệ thống chỉ bằng hướng dẫn trong README với dữ liệu mẫu. |
 | AC-35 | Bộ kiểm thử tự động (gồm kiểm thử sandbox) chạy thành công bằng một lệnh được tài liệu hóa. |
-| AC-36 | Người học nộp mục QUIZ nhận điểm và kết quả từng câu ngay; điểm và đúng/sai do client gửi bị bỏ qua. |
-| AC-37 | Mục QUIZ hoàn thành khi đạt điểm đạt; làm lại với điểm thấp hơn không làm mất trạng thái hoàn thành. |
-| AC-38 | Câu hỏi không hợp lệ (dưới 2 lựa chọn, không có đáp án đúng, câu một đáp án có nhiều đáp án đúng) không lưu được. |
-| AC-39 | Bài đánh giá chỉ chứa câu hỏi và bài tập hợp lệ; sau khi có lần làm chỉ gia hạn được ngày đóng; sửa mục học gốc không ảnh hưởng bài đánh giá. |
-| AC-40 | Điểm bài đánh giá là điểm cao nhất; code trong bài đánh giá không đổi tiến độ hay điểm mục CODING. |
-| AC-41 | Người dùng (cả Admin) xem và sửa được hồ sơ, đổi mật khẩu với mật khẩu cũ đúng, và đăng xuất thu hồi phiên. |
-| AC-42 | Admin tạo, đổi tên danh mục, xóa danh mục chưa dùng, bật/tắt ngôn ngữ lập trình; thao tác sai bị từ chối với thông báo rõ. |
-| AC-43 | Lưu khóa học `PUBLISHED` bị từ chối nếu bài CODING mất test ẩn hoặc lời giải tham chiếu không còn đạt, hoặc mục QUIZ không còn câu hỏi hợp lệ. |
-| AC-44 | Verdict cuối tuân theo quy tắc ưu tiên §3.3; điểm bằng tổng trọng số các test đạt. |
-| AC-45 | Chủ khóa học và admin xem được nội dung đầy đủ của khóa học; người chưa ghi danh vẫn không xem được (AC-11). |
+
 ---
 
 ## 9. Ma trận truy vết
@@ -503,7 +522,7 @@ Các mục sau **không** nằm trong MVP:
 | AC-35 | — | NFR-20 |
 | AC-36 | FR-38 | BR-08, BR-09, BR-18 |
 | AC-37 | FR-38, FR-25 | §3.5 |
-| AC-38 | FR-15 | BR-18 |
+| AC-38 | FR-15 | §3.1, NFR-03 |
 | AC-39 | FR-16 | BR-02, BR-20 |
 | AC-40 | FR-34 | BR-12, BR-19 |
 | AC-41 | FR-02, FR-05 | NFR-05 |
@@ -511,6 +530,7 @@ Các mục sau **không** nằm trong MVP:
 | AC-43 | FR-10, FR-14, FR-15 | §3.2 |
 | AC-44 | FR-28, FR-29 | §3.3 |
 | AC-45 | FR-24, FR-18 | BR-05 |
+
 ---
 
 ## 10. Câu hỏi mở
@@ -521,6 +541,7 @@ Các điểm cần quyết định thêm; mặc định ở trên cho phép bắ
 2. Nên hỗ trợ chấm lại tự động toàn bộ bài nộp cũ khi giảng viên sửa test case không?
 3. Có cần bài tập dạng **điền vào chỗ trống/sửa lỗi code** ngoài viết hàm đầy đủ không?
 4. Cách chấm so sánh đầu ra: so khớp chính xác, bỏ qua khoảng trắng cuối dòng, hay hỗ trợ checker tùy chỉnh?
-5. Giảng viên bị vô hiệu hóa thì các khóa học `PUBLISHED` của họ được giữ nguyên, lưu trữ hay chuyển giảng viên khác?
-6. Người học hủy ghi danh khi đang có lần làm bài đánh giá `IN_PROGRESS`: từ chối hủy hay hủy luôn lần làm?
-7. Khi gửi duyệt, hệ thống chạy lại lời giải tham chiếu hay dùng kết quả kiểm chứng đã lưu?
+5. Giao diện cần hỗ trợ cả tiếng Anh ngay từ MVP không?
+6. Giảng viên bị vô hiệu hóa thì các khóa học `PUBLISHED` của họ được giữ nguyên, lưu trữ hay chuyển giảng viên khác?
+7. Người học hủy ghi danh khi đang có lần làm bài đánh giá `IN_PROGRESS`: từ chối hủy hay hủy luôn lần làm đó?
+8. Khi gửi duyệt (UC-28), hệ thống chạy lại lời giải tham chiếu hay dùng kết quả kiểm chứng đã lưu?

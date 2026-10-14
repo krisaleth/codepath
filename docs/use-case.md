@@ -238,7 +238,7 @@ Ghi chú: UC-07 điều hướng sang UC-08, UC-09 (mục CODING) và UC-29 (m�
 | **Hậu điều kiện** | Hiển thị kết quả chạy; **không** tạo bài nộp, không ảnh hưởng điểm hay tiến độ. |
 | **Luồng chính** | 1. Người học mở bài tập, chọn ngôn ngữ và viết code trong trình soạn (nháp tự động lưu).<br>2. Người học nhấn "Chạy thử", chọn test mẫu hoặc nhập đầu vào tùy chọn.<br>3. Hệ thống kiểm tra quyền, độ dài mã và giới hạn tần suất.<br>4. Hệ thống thực thi mã trong sandbox (UC-27).<br>5. Hệ thống trả về stdout, stderr, thời gian và bộ nhớ sử dụng. |
 | **Luồng thay thế / ngoại lệ** | 3a. Mã vượt 64 KB hoặc ngôn ngữ không được bật → từ chối (BR-13).<br>3b. Vượt giới hạn tần suất → 429.<br>4a. Lỗi biên dịch → hiển thị thông báo lỗi.<br>4b. Quá thời gian, quá bộ nhớ hoặc quá đầu ra → hiển thị loại lỗi tương ứng.<br>4c. Sandbox không khả dụng → thông báo "hệ thống bận, thử lại sau". |
-| **Quy tắc liên quan** | BR-05, BR-10, BR-13, BR-14; AC-12, AC-17, AC-18 |
+| **Quy tắc liên quan** | BR-05, BR-10, BR-13, BR-14; AC-12, AC-13, AC-17, AC-18 |
 
 ### UC-09 — Nộp bài và xem kết quả chấm
 
@@ -402,16 +402,16 @@ Ghi chú: UC-07 điều hướng sang UC-08, UC-09 (mục CODING) và UC-29 (m�
 
 ## 5. Các use case còn lại (tóm tắt)
 
-| ID | Luồng chính tóm tắt | Ngoại lệ chính |
-|---|---|---|
-| UC-03 | Người dùng (Người học, Giảng viên, Admin) mở trang hồ sơ, sửa tên, giới thiệu, ảnh đại diện (URL) hoặc đổi mật khẩu (nhập mật khẩu cũ và mới). | Mật khẩu cũ sai; mật khẩu mới dưới 8 ký tự. |
-| UC-04 | Người dùng nhập từ khóa, chọn danh mục, ngôn ngữ, độ khó, sắp xếp; hệ thống trả danh sách khóa học `PUBLISHED` có phân trang. | Không có kết quả → hiển thị trạng thái rỗng. |
-| UC-05 | Người dùng mở trang chi tiết: mô tả, giảng viên, đề cương, mục xem thử. Chỉ mục xem thử mở được nội dung; chủ khóa học và admin xem được toàn bộ nội dung (BR-05). | Khóa học không `PUBLISHED` hoặc không tồn tại → 404 (trừ chủ khóa học và admin). |
-| UC-10 | Người học mở lịch sử bài nộp của một bài tập, xem verdict, điểm, thời gian và mã đã nộp. | Chỉ xem được bài nộp của chính mình. |
-| UC-12 | Người học xem khóa học đang học, phần trăm tiến độ, số bài đã giải, điểm các bài đánh giá. | — |
-| UC-13 | Giảng viên tạo khóa học (tiêu đề, mô tả, danh mục, độ khó), sửa, xem trước toàn bộ nội dung khóa của mình, xem trạng thái và lý do từ chối, hoặc xóa khi đủ điều kiện (§3.2: chỉ `DRAFT`/`REJECTED` chưa có ghi danh). | Xóa khóa học không đủ điều kiện → từ chối (chỉ admin lưu trữ được, UC-21). |
-| UC-14 | Giảng viên thêm, sửa, kéo thả sắp xếp, xóa chương và mục học; đánh dấu mục xem thử. | Khóa học thuộc người khác → 403; khóa học `PENDING_REVIEW` hoặc `ARCHIVED` → không cho sửa. |
-| UC-18 | Giảng viên xem số người học, tiến độ trung bình, tỉ lệ `ACCEPTED` theo bài tập, điểm đánh giá, câu hỏi/bài tập có tỉ lệ sai cao, và bài nộp của từng người học trong khóa học của mình. | Khóa học của giảng viên khác → 403. |
-| UC-21 | Admin chọn khóa học `PUBLISHED` và gỡ xuống; khóa học chuyển `ARCHIVED`, học viên đã ghi danh vẫn truy cập được, không nhận ghi danh mới. | — |
-| UC-23 | Admin thêm, đổi tên, xóa danh mục chưa dùng; bật/tắt ngôn ngữ lập trình; xem cấu hình giới hạn mặc định. | Xóa danh mục đang có khóa học → từ chối; tắt ngôn ngữ đang được bài tập sử dụng → cảnh báo. |
-| UC-24 | Admin xem số người dùng, khóa học, ghi danh, bài nộp theo verdict, độ dài hàng đợi, thời gian chấm trung bình. | — |
+| ID | Luồng chính tóm tắt | Ngoại lệ chính | Tham chiếu |
+|---|---|---|---|
+| UC-03 | Người dùng (Người học, Giảng viên, Admin) mở trang hồ sơ, sửa tên, giới thiệu, ảnh đại diện (URL) hoặc đổi mật khẩu (nhập mật khẩu cũ và mới). | Mật khẩu cũ sai; mật khẩu mới dưới 8 ký tự. | FR-02, FR-05; AC-41 |
+| UC-04 | Người dùng nhập từ khóa, chọn danh mục, ngôn ngữ, độ khó, sắp xếp; hệ thống trả danh sách khóa học `PUBLISHED` có phân trang. | Không có kết quả → hiển thị trạng thái rỗng. | FR-07, FR-08; AC-02, AC-03 |
+| UC-05 | Người dùng mở trang chi tiết: mô tả, giảng viên, đề cương, mục xem thử. Chỉ mục xem thử mở được nội dung; chủ khóa học và admin xem được toàn bộ nội dung (BR-05). | Khóa học không `PUBLISHED` hoặc không tồn tại → 404 (trừ chủ khóa học và admin). | FR-09, FR-24; BR-05; AC-01, AC-11, AC-45 |
+| UC-10 | Người học mở lịch sử bài nộp của một bài tập, xem verdict, điểm, thời gian và mã đã nộp. | Chỉ xem được bài nộp của chính mình. | FR-30; BR-07; AC-29 |
+| UC-12 | Người học xem khóa học đang học, phần trăm tiến độ, số bài đã giải, điểm các bài đánh giá. | — | FR-25, FR-37; BR-07; AC-24, AC-29 |
+| UC-13 | Giảng viên tạo khóa học (tiêu đề, mô tả, danh mục, độ khó), sửa, xem trước toàn bộ nội dung khóa của mình, xem trạng thái và lý do từ chối, hoặc xóa khi đủ điều kiện (§3.2: chỉ `DRAFT`/`REJECTED` chưa có ghi danh). | Xóa khóa học không đủ điều kiện → từ chối (chỉ admin lưu trữ được, UC-21). | FR-10, FR-17; BR-02, BR-05; AC-04, AC-05 |
+| UC-14 | Giảng viên thêm, sửa, kéo thả sắp xếp, xóa chương và mục học; đánh dấu mục xem thử. | Khóa học thuộc người khác → 403; khóa học `PENDING_REVIEW` hoặc `ARCHIVED` → không cho sửa. | FR-11; BR-02; AC-05, AC-06 |
+| UC-18 | Giảng viên xem số người học, tiến độ trung bình, tỉ lệ `ACCEPTED` theo bài tập, điểm đánh giá, câu hỏi/bài tập có tỉ lệ sai cao, và bài nộp của từng người học trong khóa học của mình. | Khóa học của giảng viên khác → 403. | FR-35, FR-36; BR-07; AC-29, AC-33 |
+| UC-21 | Admin chọn khóa học `PUBLISHED` và gỡ xuống; khóa học chuyển `ARCHIVED`, học viên đã ghi danh vẫn truy cập được, không nhận ghi danh mới. | — | FR-19; BR-06; AC-14 |
+| UC-23 | Admin thêm, đổi tên, xóa danh mục chưa dùng; bật/tắt ngôn ngữ lập trình; xem cấu hình giới hạn mặc định. | Xóa danh mục đang có khóa học → từ chối; tắt ngôn ngữ đang được bài tập sử dụng → cảnh báo. | FR-20, FR-21; AC-42 |
+| UC-24 | Admin xem số người dùng, khóa học, ghi danh, bài nộp theo verdict, độ dài hàng đợi, thời gian chấm trung bình. | — | FR-22; AC-33 |
