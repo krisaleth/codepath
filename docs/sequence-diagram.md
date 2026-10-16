@@ -11,6 +11,7 @@
 
 1. [Các thành phần tham gia](#1-các-thành-phần-tham-gia)
 2. [UC-09 — Nộp bài và xem kết quả chấm](#2-uc-09--nộp-bài-và-xem-kết-quả-chấm)
+3. [UC-11 — Làm bài đánh giá](#3-uc-11--làm-bài-đánh-giá)
 
 ---
 
@@ -186,3 +187,208 @@ sequenceDiagram
 3. **Chạy hết test case.** Điểm bằng tổng trọng số test đạt nên worker chạy toàn bộ test, chỉ dừng khi biên dịch lỗi hoặc hạ tầng lỗi. Với bài nhiều test, thời gian chấm tăng theo số test (liên quan NFR-10).
 4. **Biên dịch lặp lại.** Mỗi test chạy trong sandbox riêng (§3.3) và UC-27 biên dịch trong từng lần chạy. Biên dịch một lần rồi dùng lại là tối ưu triển khai, không đổi hành vi. Nên gắn với quyết định Judge0 hay runner tự xây (câu hỏi mở 1).
 5. **Số lần đưa lại.** Bộ định thời cần đếm số lần đưa lại cho mỗi bài `QUEUED`. Requirements chưa quy định chỗ lưu (cột riêng hay dùng bộ đếm retry của BullMQ), cần chốt khi thiết kế CSDL.
+
+---
+
+## 3. UC-11 — Làm bài đánh giá
+
+Bài đánh giá gồm câu trắc nghiệm (chấm ngay) và bài code (chấm qua hàng đợi như UC-09). Mọi mốc thời gian do **đồng hồ máy chủ** quyết định (BR-15). Phần chấm code dùng lại luồng worker và sandbox ở mục 2.1 nên không vẽ lại chi tiết.
+
+### 3.1 Bắt đầu, tiếp tục và làm bài
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor L as Người học
+  participant FE as Frontend
+  participant API as API
+  participant DB as PostgreSQL
+
+  L->>FE: Mở bài đánh giá
+  FE->>API: GET /assessments/id
+  API->>DB: Đọc cấu hình, kiểm tra đã ghi danh, đọc các lần làm của người học
+  DB-->>API: Cấu hình và các lần làm
+
+  alt Đang có lần làm IN_PROGRESS
+    API-->>FE: Tiếp tục làm bài (nháp đã lưu, hạn nộp, giờ máy chủ)
+    FE-->>L: Khôi phục nháp, đồng hồ đếm ngược theo hạn nộp
+  else Không có lần làm IN_PROGRESS
+    API-->>FE: Thông tin bài và số lượt còn lại
+    FE-->>L: Hiển thị nút Bắt đầu
+    L->>FE: Nhấn Bắt đầu
+    FE->>API: POST /assessments/id/attempts
+    API->>DB: Kiểm tra khoảng mở và đóng, còn lượt, không có lần IN_PROGRESS khác
+
+    alt Không đủ điều kiện
+      API-->>FE: Lỗi 403 hoặc 409
+      FE-->>L: Hiển thị lý do
+    else Đủ điều kiện
+      API->>DB: Tạo lần làm IN_PROGRESS, ghi giờ bắt đầu và hạn nộp
+      Note over API,DB: Hạn nộp là sớm hơn giữa bắt đầu cộng thời lượng và ngày đóng
+      DB-->>API: Lần làm mới
+      API-->>FE: Câu hỏi và bài tập (xáo trộn nếu cấu hình, không kèm đáp án đúng), hạn nộp, giờ máy chủ
+      FE-->>L: Hiển thị đề và đồng hồ đếm ngược
+    end
+  end
+
+  loop Trong lúc làm bài
+    L->>FE: Trả lời câu hỏi, viết code
+    FE->>API: PUT /attempts/id/draft (nháp)
+    API->>DB: Lưu nháp, chỉ khi lần làm đang IN_PROGRESS và chưa quá hạn
+    API-->>FE: Đã lưu
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–4 | Mở bài, đọc cấu hình, kiểm tra đã ghi danh | FR-33, BR-05 |
+| 5–6 | Đang có lần làm `IN_PROGRESS` thì tiếp tục: khôi phục nháp, đồng hồ theo giờ máy chủ | UC-11 (luồng tiếp tục), §3.4, BR-15 |
+| 7–13 | Bắt đầu lần làm mới, từ chối nếu ngoài khoảng mở/đóng, hết lượt hoặc đang có lần `IN_PROGRESS` | BR-16, AC-27, UC-11 (1a, 1b) |
+| 14–17 | Tạo lần làm, hạn nộp là sớm hơn giữa bắt đầu cộng thời lượng và ngày đóng; trả đề không kèm đáp án đúng | §3.4, BR-09, BR-15, AC-25 |
+| 18–21 | Tự lưu nháp định kỳ, chỉ khi còn hạn | FR-33, BR-15, AC-26 |
+
+### 3.2 Nộp bài và chấm
+
+Người học nộp, hệ thống chấm trắc nghiệm ngay rồi đưa phần code vào hàng đợi. Lần làm chỉ chuyển `GRADED` khi mọi phần đã chấm.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor L as Người học
+  participant FE as Frontend
+  participant API as API
+  participant DB as PostgreSQL
+  participant Q as Hàng đợi
+  participant W as Worker
+
+  L->>FE: Nhấn Nộp bài
+  FE->>API: POST /attempts/id/submit (câu trả lời, mã nguồn)
+  API->>DB: Đọc lần làm (trạng thái, hạn nộp)
+  DB-->>API: Lần làm
+
+  alt Còn trong hạn, tính cả 10 giây du di
+    API->>DB: Lưu nội dung gửi lên làm bản nộp cuối
+  else Đã quá hạn
+    Note over API: Bỏ nội dung gửi lên, dùng nháp đã lưu
+  end
+
+  API->>DB: Chuyển SUBMITTED, chỉ khi đang IN_PROGRESS
+  DB-->>API: Số dòng được cập nhật
+
+  alt Không có dòng nào được cập nhật
+    API-->>FE: Trạng thái hiện tại, không nộp lần hai
+  else Chuyển được
+    API->>API: Chấm trắc nghiệm ngay, so với đáp án trong bản sao câu hỏi
+    API->>DB: Lưu điểm trắc nghiệm
+
+    alt Có phần code
+      API->>Q: Thêm job chấm cho từng bài code
+      API-->>FE: Đã nộp, đang chấm phần code
+
+      par Giao diện cập nhật kết quả
+        loop Cho đến khi GRADED
+          FE->>API: GET /attempts/id
+          API->>DB: Đọc trạng thái và kết quả
+          DB-->>API: Dữ liệu lần làm
+          alt Đã GRADED
+            API-->>FE: Điểm và kết quả, đáp án đúng chỉ hiện theo cấu hình
+            FE-->>L: Hiển thị điểm
+          else Chưa xong
+            API-->>FE: Trạng thái SUBMITTED
+          end
+        end
+      and Worker chấm phần code
+        Q->>W: Giao job (lần làm, bài code)
+        Note over W: Chạy từng test trong sandbox và tính điểm như UC-25 (sơ đồ 2.1)
+
+        alt Lỗi hạ tầng sau khi thử lại có giới hạn
+          W->>DB: Đánh dấu phần code INTERNAL_ERROR, lần làm vẫn SUBMITTED
+          Note over W,DB: Chờ giảng viên hoặc admin chấm lại (UC-19, sơ đồ 2.2)
+        else Chấm xong
+          W->>DB: Lưu điểm phần code, chỉ khi lần làm vẫn SUBMITTED
+          Note over W,DB: Cùng một transaction, nếu mọi phần đã chấm thì GRADED, tính điểm tổng, cập nhật điểm cao nhất
+        end
+      end
+    else Không có phần code
+      API->>DB: Chuyển GRADED, tính điểm tổng, cập nhật điểm cao nhất
+      API-->>FE: Điểm và kết quả
+      FE-->>L: Hiển thị điểm
+    end
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–4 | Người học nộp, API đọc trạng thái và hạn nộp của lần làm | FR-33, BR-15 |
+| 5 | Còn trong hạn (cộng 10 giây du di) thì dùng nội dung gửi lên; quá hạn thì bỏ nội dung và dùng nháp đã lưu | BR-15, AC-26, UC-11 (4a) |
+| 6–8 | Chuyển `SUBMITTED` chỉ khi đang `IN_PROGRESS`, nên nộp lần hai không có hiệu lực | UC-11 (4b), §3.4 |
+| 9–10 | Chấm trắc nghiệm ngay, điểm do máy chủ tính | FR-34, BR-08, BR-18 |
+| 11–12 | Phần code đưa vào hàng đợi, người học thấy đã nộp | FR-34, UC-25 |
+| 13–18 | Giao diện cập nhật đến khi `GRADED`; đáp án đúng chỉ hiện theo cấu hình | BR-17, AC-28 |
+| 19–21 | Worker chấm phần code; lỗi hạ tầng thì phần code `INTERNAL_ERROR`, lần làm vẫn `SUBMITTED` chờ chấm lại; chấm xong thì lưu điểm, kiểm tra mọi phần, chuyển `GRADED`, cập nhật điểm cao nhất | §3.4, BR-11, BR-19, AC-23, AC-40, NFR-12 |
+| 22–24 | Không có phần code thì chuyển `GRADED` ngay | §3.4, BR-19 |
+
+### 3.3 Hết giờ: tự nộp và nộp trùng thời điểm
+
+Bộ định thời tự nộp các lần làm quá hạn (UC-26). Nếu người học cũng nộp đúng lúc đó, chỉ một bên thành công vì cả hai dùng cùng điều kiện trạng thái (UC-11, luồng 4b).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant S as Bộ định thời
+  actor L as Người học
+  participant FE as Frontend
+  participant API as API
+  participant DB as PostgreSQL
+  participant Q as Hàng đợi
+
+  Note over S,DB: Quét định kỳ, ví dụ mỗi 30 giây
+
+  par Bộ định thời quét
+    S->>DB: Tìm lần làm IN_PROGRESS đã quá hạn
+    DB-->>S: Danh sách lần làm quá hạn
+    S->>DB: Chuyển SUBMITTED bằng nháp đã lưu, chỉ khi đang IN_PROGRESS
+    DB-->>S: Số dòng được cập nhật
+
+    alt Chuyển được
+      S->>S: Chấm trắc nghiệm ngay
+      S->>DB: Lưu điểm trắc nghiệm
+      opt Có phần code
+        S->>Q: Thêm job chấm cho từng bài code
+      end
+      Note over S,Q: Từ đây chấm như sơ đồ 3.2
+    else Không có dòng nào được cập nhật
+      Note over S: Người học vừa nộp, bỏ qua
+    end
+  and Người học nộp đúng lúc hết giờ
+    L->>FE: Nhấn Nộp bài
+    FE->>API: POST /attempts/id/submit
+    API->>DB: Chuyển SUBMITTED, chỉ khi đang IN_PROGRESS
+    DB-->>API: Số dòng được cập nhật
+
+    alt Không có dòng nào được cập nhật
+      API-->>FE: Trạng thái hiện tại, bài đã được nộp
+      FE-->>L: Hiển thị bài đã nộp
+    else Chuyển được
+      Note over API: Tiếp tục chấm như sơ đồ 3.2
+    end
+  end
+
+  Note over DB: Chỉ một câu lệnh cập nhật được dòng, bài không bị nộp hai lần
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–4 | Bộ định thời tìm lần làm quá hạn và chuyển `SUBMITTED` bằng nháp đã lưu, chỉ khi đang `IN_PROGRESS` | UC-26, BR-15, AC-25 |
+| 5–7 | Chấm trắc nghiệm, đưa phần code vào hàng đợi | UC-26, UC-25 |
+| 8–13 | Người học nộp cùng lúc: bên đến sau không cập nhật được dòng nào nên không nộp hai lần | UC-11 (4b), UC-26 (2a), NFR-11 |
+
+### 3.4 Điểm thiết kế cần xác nhận
+
+1. **Quay lại sau khi hết hạn nhưng trước lần quét của bộ định thời.** Máy chủ quyết định thời gian (BR-15), nên API cần nộp bằng nháp đã lưu thay vì cho tiếp tục làm bài. UC-11 chưa nêu rõ trường hợp này.
+2. **Ai chuyển `GRADED`.** Nếu không có phần code, API chuyển ngay. Nếu có, worker xử lý phần code sau cùng sẽ chuyển trong cùng transaction với việc lưu điểm. Cách khác là để bộ định thời quét các lần làm `SUBMITTED` đã chấm đủ, nhưng thêm độ trễ.
+3. **Một lần làm `IN_PROGRESS` cho mỗi cặp người học và bài đánh giá.** Để hai tab bấm Bắt đầu cùng lúc không tạo hai lần làm, cần ràng buộc ở CSDL (duy nhất một phần theo trạng thái). NFR-13 chưa liệt kê ràng buộc này.
+4. **Lưu nháp sau hạn.** BR-15 chỉ nói về nội dung nộp. Sơ đồ giả định nháp gửi sau hạn (cộng 10 giây du di) cũng bị bỏ qua.
+5. **Chấm trắc nghiệm đồng bộ.** API và bộ định thời chấm ngay vì chỉ so khớp đáp án. Nếu bài rất nhiều câu có thể chuyển sang worker mà không đổi hành vi.
+6. **Kết quả phần code không vào lịch sử bài nộp (BR-19).** Worker dùng lại luồng UC-25 nhưng ghi kết quả theo lần làm. Khi thiết kế ERD cần tách bảng kết quả hoặc đánh dấu nguồn của kết quả.
+7. **Lần làm bị bỏ dở có tính lượt không.** Requirements chưa nói. Sơ đồ coi mọi lần làm đã bắt đầu là đã dùng một lượt, kể cả khi bị tự nộp lúc hết giờ. Cần chốt, vì ảnh hưởng đến BR-16.
