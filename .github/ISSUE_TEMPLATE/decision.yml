@@ -1,0 +1,25 @@
+name: Cần ra quyết định
+description: Câu hỏi mở cần chốt và ghi thành ADR
+labels: ["type:decision"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Câu hỏi
+      description: Nguồn, ví dụ requirements §10
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Các phương án
+      description: Ưu và nhược từng phương án
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Đề xuất
+  - type: textarea
+    id: impact
+    attributes:
+      label: Tài liệu bị ảnh hưởng
+      description: requirements, use case, sơ đồ, ERD

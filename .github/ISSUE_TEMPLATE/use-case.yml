@@ -1,0 +1,29 @@
+name: Triển khai use case
+description: Hiện thực một use case đã có trong docs/use-case.md
+labels: ["use-case", "type:feature"]
+body:
+  - type: input
+    id: uc
+    attributes:
+      label: Use case
+      description: Mã và tên, ví dụ UC-09 — Nộp bài và xem kết quả chấm
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: Yêu cầu liên quan
+      description: FR, BR, NFR, AC lấy từ đặc tả
+  - type: textarea
+    id: ac
+    attributes:
+      label: Tiêu chí chấp nhận
+      description: Danh sách AC cần đạt, mỗi dòng một mục
+      value: "- [ ] AC-"
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Ghi chú
+      description: Điểm khác với đặc tả (nếu có). Nếu khác, cần cập nhật tài liệu trước.

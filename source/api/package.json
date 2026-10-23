@@ -1,0 +1,19 @@
+
+{
+  "name": "codepath-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend API for Codepath",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

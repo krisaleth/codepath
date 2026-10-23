@@ -1,0 +1,39 @@
+# Phụ thuộc và kết quả build
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# Biến môi trường (chỉ commit .env.example)
+.env
+.env.*
+!.env.example
+
+# Nhật ký và tệp tạm
+*.log
+npm-debug.log*
+.cache/
+tmp/
+
+# Prisma và dữ liệu cục bộ của Docker
+*.db
+.docker-data/
+pgdata/
+redisdata/
+
+# Hệ điều hành và trình soạn thảo
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Python (công cụ trong tools/)
+__pycache__/
+*.pyc
+
+# Báo cáo đồ án và tệp Office: chứa thông tin cá nhân, để ngoài repo
+*.docx
+*.pptx

@@ -1,0 +1,14 @@
+{
+  // Cấu hình lint cho tài liệu tiếng Việt, có bảng và sơ đồ Mermaid
+  "config": {
+    "default": true,
+    "MD013": false,   // độ dài dòng: bảng và đoạn văn dài
+    "MD024": { "siblings_only": true },
+    "MD033": false,   // cho phép <br> trong ô bảng
+    "MD036": false,   // cho phép in đậm như nhãn đoạn
+    "MD041": false,
+    "MD060": false    // kiểu cột của bảng: dùng bảng gọn, không căn lề bằng dấu cách
+  },
+  "globs": ["README.md", "docs/**/*.md", ".github/**/*.md"],
+  "ignores": ["node_modules/**"]
+}

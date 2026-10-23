@@ -1,0 +1,32 @@
+name: Báo lỗi
+description: Hệ thống hoạt động sai so với đặc tả
+labels: ["bug"]
+body:
+  - type: textarea
+    id: expected
+    attributes:
+      label: Hành vi mong đợi
+      description: Theo use case hoặc tiêu chí chấp nhận nào
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Hành vi thực tế
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Các bước tái hiện
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Môi trường
+      description: Trình duyệt, hệ điều hành, phiên bản, log liên quan (không dán token hay mật khẩu)
