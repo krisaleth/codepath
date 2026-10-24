@@ -94,7 +94,7 @@ Mỗi tài khoản có đúng một vai trò chính: `LEARNER`, `INSTRUCTOR` ho�
 
 ### 3.1 Cấu trúc nội dung
 
-```
+```text
 Khóa học (Course)
  ├── Chương (Section)
  │    └── Mục học (Lesson)  ── loại: TEXT | VIDEO | CODING | QUIZ
@@ -111,7 +111,7 @@ Mỗi mục học có cờ `isPreview` do giảng viên sở hữu thiết lập
 
 ### 3.2 Vòng đời khóa học
 
-```
+```text
 DRAFT ──gửi duyệt──► PENDING_REVIEW ──duyệt──► PUBLISHED
   ▲                        │                       │
   │                        └──từ chối──► REJECTED  └──gỡ xuống──► ARCHIVED
@@ -137,7 +137,7 @@ Quy tắc:
 
 ### 3.3 Vòng đời bài nộp (Submission)
 
-```
+```text
 QUEUED ──► RUNNING ──► (kết quả cuối)
   ▲                          │
   └─── chấm lại ◄── INTERNAL_ERROR
@@ -179,7 +179,7 @@ Quy tắc:
 
 Bài đánh giá là một bài kiểm tra có giới hạn thời gian, gồm câu hỏi trắc nghiệm và/hoặc bài tập code, gắn với một khóa học.
 
-```
+```text
 NOT_STARTED ──bắt đầu──► IN_PROGRESS ──nộp──► SUBMITTED ──chấm xong──► GRADED
                               │
                               └──hết giờ──► SUBMITTED (tự động nộp)
