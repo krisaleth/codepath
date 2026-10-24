@@ -214,7 +214,7 @@ Ghi chú: UC-07 điều hướng sang UC-08, UC-09 (mục CODING) và UC-29 (m�
 | **Hậu điều kiện** | Ghi danh: tồn tại đúng một bản ghi `(người dùng, khóa học)`; tiến độ hiển thị theo dữ liệu đã lưu (0% nếu ghi danh lần đầu, khôi phục tiến độ cũ nếu từng ghi danh). Hủy: bản ghi ghi danh bị xóa, tiến độ và bài nộp vẫn được lưu (§3.5). |
 | **Luồng chính (ghi danh)** | 1. Người dùng nhấn "Ghi danh" ở trang chi tiết khóa học.<br>2. Hệ thống kiểm tra khóa học đang `PUBLISHED` và người dùng không phải chủ khóa học.<br>3. Hệ thống tạo ghi danh.<br>4. Hệ thống chuyển người dùng đến trang học của khóa học. |
 | **Luồng hủy ghi danh** | H1. Người học chọn "Hủy ghi danh".<br>H2. Hệ thống xác nhận; nếu khóa học là `ARCHIVED`, cảnh báo rằng sau khi hủy sẽ không ghi danh lại được.<br>H3. Hệ thống xóa ghi danh; tiến độ và bài nộp được giữ lại. |
-| **Luồng thay thế / ngoại lệ** | 2a. Khóa học không còn `PUBLISHED` → báo lỗi, không ghi danh.<br>2b. Người dùng là chủ khóa học → từ chối (403).<br>3a. Đã ghi danh (kể cả yêu cầu đồng thời) → ràng buộc unique chặn bản ghi trùng; trả về ghi danh hiện có.<br>H2a. Đang có lần làm bài đánh giá `IN_PROGRESS` → chưa quyết định (xem câu hỏi mở ở requirements §10). |
+| **Luồng thay thế / ngoại lệ** | 2a. Khóa học không còn `PUBLISHED` → báo lỗi, không ghi danh.<br>2b. Người dùng là chủ khóa học → từ chối (403).<br>3a. Đã ghi danh (kể cả yêu cầu đồng thời) → ID document xác định chặn bản ghi trùng; trả về ghi danh hiện có.<br>H2a. Đang có lần làm bài đánh giá `IN_PROGRESS` → chưa quyết định (xem câu hỏi mở ở requirements §10). |
 | **Quy tắc liên quan** | BR-01, BR-04, BR-06; FR-23; AC-09, AC-10, AC-14 |
 
 ### UC-07 — Học nội dung và đánh dấu hoàn thành

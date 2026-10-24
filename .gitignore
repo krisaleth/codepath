@@ -17,11 +17,19 @@ npm-debug.log*
 .cache/
 tmp/
 
-# Prisma và dữ liệu cục bộ của Docker
+# Dữ liệu cục bộ của Docker và Firebase Emulator
 *.db
 .docker-data/
-pgdata/
 redisdata/
+firebase-export/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+
+# Khóa service account Firebase (bí mật)
+secrets/
+*service-account*.json
 
 # Hệ điều hành và trình soạn thảo
 .DS_Store

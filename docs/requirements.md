@@ -24,6 +24,7 @@
 | §5 | Sửa BR-05, BR-07, BR-09, BR-17; thêm BR-18, BR-19, BR-20 |
 | §8, §9 | Sửa AC-23; thêm AC-36 đến AC-45 và cập nhật ma trận truy vết |
 | §10 | Bỏ câu hỏi về điểm bài tập (đã chốt ở BR-12); thêm 3 câu hỏi mới |
+| §1.2, §5, §6 | Đổi cơ sở dữ liệu từ PostgreSQL và Prisma sang Cloud Firestore; sửa BR-04, NFR-04, NFR-12, NFR-13, NFR-17, NFR-19 |
 
 ## Mục lục
 
@@ -57,13 +58,15 @@ CodePath là nền tảng web giúp người học tiếp cận lập trình the
 |---|---|
 | Frontend | React, TypeScript, Vite, Monaco Editor (trình soạn code) |
 | Backend | Node.js, Express.js, TypeScript |
-| Cơ sở dữ liệu | PostgreSQL |
-| ORM | Prisma |
+| Cơ sở dữ liệu | Cloud Firestore (Firebase) |
+| Truy cập dữ liệu | Firebase Admin SDK (Node.js), chỉ API và worker truy cập |
 | Hàng đợi chấm bài | Redis + BullMQ |
 | Môi trường chạy code | Docker sandbox tự dựng hoặc Judge0 (self-hosted) |
 | Kiểm tra dữ liệu | Zod |
 | API | REST dưới `/api/v1`, tài liệu OpenAPI/Swagger |
-| Triển khai local | Docker Compose (PostgreSQL, Redis, runner) + seed dữ liệu |
+| Triển khai local | Docker Compose (Redis, runner) + Firebase Emulator Suite (Firestore) + seed dữ liệu |
+
+> **[Quyết định]** Dữ liệu lưu ở Cloud Firestore (chế độ Native). Chỉ API và worker truy cập Firestore bằng Firebase Admin SDK; Security Rules từ chối mọi truy cập trực tiếp từ client, để BR-05 và BR-09 luôn do máy chủ kiểm soát. Firestore không có ràng buộc duy nhất, khóa ngoại hay câu lệnh `UPDATE ... WHERE`, nên tính duy nhất dùng ID document xác định và cập nhật theo điều kiện trạng thái dùng transaction (NFR-12, NFR-13). Truy vấn nhiều điều kiện cần chỉ mục tổng hợp, khai báo trong `firestore.indexes.json`.
 
 ### 1.3 Quy ước chung
 
@@ -309,7 +312,7 @@ Mọi mã người dùng được xem là **không đáng tin cậy**. Mỗi l�
 | BR-01 | Chỉ khóa học `PUBLISHED` mới được hiển thị công khai và cho phép ghi danh. |
 | BR-02 | Giảng viên chỉ được sửa khóa học, bài tập, test case và bài đánh giá thuộc sở hữu của mình. |
 | BR-03 | Chỉ admin được duyệt hoặc từ chối khóa học; giảng viên không thể duyệt khóa học của chính mình. |
-| BR-04 | Mỗi người dùng chỉ có tối đa một ghi danh cho mỗi khóa học (ràng buộc unique trong CSDL). |
+| BR-04 | Mỗi người dùng chỉ có tối đa một ghi danh cho mỗi khóa học (document ghi danh có ID xác định `{userId}_{courseId}` nên không thể trùng). |
 | BR-05 | Nội dung đầy đủ (đề bài, video, test case, đáp án) chỉ dành cho người đã ghi danh, chủ khóa học và admin; ngoại lệ là mục học xem thử của khóa học `PUBLISHED`. Quyền được kiểm tra trên máy chủ theo ID của mục học. |
 | BR-06 | Ghi danh vẫn có hiệu lực khi khóa học bị lưu trữ. |
 | BR-07 | Người dùng chỉ truy cập bài nộp, tiến độ, kết quả đánh giá của chính mình; giảng viên chỉ xem dữ liệu của người học trong khóa học mình sở hữu; admin chỉ xem bài nộp `INTERNAL_ERROR` để chấm lại (FR-32) và số liệu tổng hợp (FR-22). |
@@ -348,7 +351,7 @@ Mọi mã người dùng được xem là **không đáng tin cậy**. Mỗi l�
 | NFR-01 | Mật khẩu được băm bằng bcrypt (cost ≥ 10) hoặc argon2; độ dài tối thiểu 8 ký tự. |
 | NFR-02 | Endpoint được bảo vệ phải kiểm tra xác thực và phân quyền ở phía máy chủ. |
 | NFR-03 | Toàn bộ dữ liệu đầu vào API được kiểm tra bằng Zod trước khi xử lý. |
-| NFR-04 | Bí mật (khóa JWT, thông tin CSDL) lưu trong biến môi trường, không đưa vào Git; có sẵn `.env.example`. |
+| NFR-04 | Bí mật (khóa JWT, khóa service account Firebase) lưu trong biến môi trường, không đưa vào Git; có sẵn `.env.example`. |
 | NFR-05 | **Token:** JWT access token ngắn hạn (≈15 phút) kèm refresh token trong cookie `httpOnly`; đăng xuất thu hồi refresh token; máy chủ kiểm tra cờ `isActive` ở mỗi request. |
 | NFR-06 | Giới hạn tần suất cho đăng nhập/đăng ký (ví dụ 10 lần/phút/IP), chạy thử (ví dụ 10 lần/phút/người dùng) và nộp bài (ví dụ 5 lần/phút/người dùng). Cấu hình CORS theo origin của frontend; bật security headers (Helmet). |
 | NFR-07 | **Sandbox:** đáp ứng đầy đủ §3.6; runner chạy tách biệt khỏi máy chủ API và CSDL, không có quyền truy cập secret hay mạng nội bộ. |
@@ -361,8 +364,8 @@ Mọi mã người dùng được xem là **không đáng tin cậy**. Mỗi l�
 | NFR-09 | API nộp bài phản hồi trong vòng 500 ms (chỉ tạo bản ghi và đưa vào hàng đợi). |
 | NFR-10 | Với bài tập nhỏ (≤ 10 test, mỗi test ≤ 1 giây), có kết quả chấm trong vòng 10 giây ở điều kiện tải bình thường (mục tiêu demo ≥ 20 bài nộp đồng thời). |
 | NFR-11 | Hàng đợi chấm bài có thể mở rộng bằng cách tăng số worker mà không đổi mã nguồn; công việc chấm bài **idempotent** và có cơ chế retry giới hạn. |
-| NFR-12 | Các thao tác nghiệp vụ quan trọng (ghi danh, cập nhật kết quả bài nộp, bắt đầu/nộp bài đánh giá) dùng transaction CSDL khi cần. |
-| NFR-13 | Ràng buộc toàn vẹn: unique `(userId, courseId)` cho ghi danh; unique `(userId, lessonId)` cho tiến độ; khóa ngoại đầy đủ; điểm số không âm. |
+| NFR-12 | Các thao tác nghiệp vụ quan trọng (ghi danh, cập nhật kết quả bài nộp, bắt đầu/nộp bài đánh giá) dùng transaction Firestore (`runTransaction`) khi cần; cập nhật có điều kiện theo trạng thái cũng thực hiện trong transaction. |
+| NFR-13 | Ràng buộc toàn vẹn: Firestore không có unique hay khóa ngoại, nên tính duy nhất được đảm bảo bằng ID document xác định, tạo bằng `create()`: ghi danh `{userId}_{courseId}`, tiến độ `{userId}_{lessonId}`, email người dùng (document riêng theo email đã chuẩn hóa); tham chiếu giữa các document do tầng API kiểm tra; điểm số không âm kiểm tra bằng Zod. |
 
 ### Chất lượng API và vận hành
 
@@ -371,9 +374,9 @@ Mọi mã người dùng được xem là **không đáng tin cậy**. Mỗi l�
 | NFR-14 | Các endpoint danh sách có phân trang (mặc định 10, tối đa 50) kèm tổng số bản ghi. |
 | NFR-15 | Lỗi theo định dạng thống nhất: `{ "error": { "code": "SUBMISSION_RATE_LIMITED", "message": "...", "details": [...] } }` với mã HTTP phù hợp. |
 | NFR-16 | Tài liệu OpenAPI/Swagger tại `/api/docs`. |
-| NFR-17 | Thay đổi CSDL quản lý bằng migration Prisma có phiên bản. |
+| NFR-17 | Thay đổi cấu trúc dữ liệu quản lý bằng script chuyển đổi dữ liệu có phiên bản; chỉ mục (`firestore.indexes.json`) và Security Rules được lưu trong Git. |
 | NFR-18 | Log có cấu trúc cho request, lỗi và từng lần chấm bài (id bài nộp, verdict, thời gian); không ghi mật khẩu hay token. |
-| NFR-19 | Dự án chạy được cục bộ theo tài liệu với Docker Compose và dữ liệu mẫu: 1 admin, 2 giảng viên, 3 người học, danh mục, khóa học ở nhiều trạng thái, ít nhất 5 bài tập code (Python/JS/C++) có test case công khai và ẩn, 1 bài đánh giá. |
+| NFR-19 | Dự án chạy được cục bộ theo tài liệu với Docker Compose, Firebase Emulator Suite (Firestore) và dữ liệu mẫu: 1 admin, 2 giảng viên, 3 người học, danh mục, khóa học ở nhiều trạng thái, ít nhất 5 bài tập code (Python/JS/C++) có test case công khai và ẩn, 1 bài đánh giá. |
 | NFR-20 | **Kiểm thử:** unit và integration test cho verdict của bộ chấm (đúng, sai, lỗi biên dịch, quá thời gian, quá bộ nhớ), phân quyền, BR-05, BR-09, BR-12, BR-15; có kiểm thử sandbox với mã độc mẫu (vòng lặp vô hạn, fork bomb, truy cập mạng, đọc file hệ thống). Chạy bằng một lệnh được tài liệu hóa. |
 
 ---

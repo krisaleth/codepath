@@ -11,7 +11,7 @@ Nền tảng học lập trình trực tuyến tích hợp môi trường thực
 | Hạng mục | Tình trạng |
 |---|---|
 | Phân tích yêu cầu, use case, sơ đồ trạng thái, sơ đồ tuần tự | Đã có, phiên bản 1.1 (thư mục `docs/`) |
-| ERD, đặc tả API | Chưa có (milestone M0) |
+| Mô hình dữ liệu Firestore, đặc tả API | Chưa có (milestone M0) |
 | Mã nguồn, Docker Compose | Chưa có, bắt đầu từ milestone M1 |
 
 Dự án đang ở giai đoạn tài liệu. Chưa có mã nguồn chạy được.
@@ -30,12 +30,12 @@ Phạm vi đầy đủ và các nội dung nằm ngoài phạm vi: xem [docs/req
 
 | Tầng | Công nghệ |
 |---|---|
-| Frontend | React, TypeScript, Vite, Monaco Editor |
+| Frontend | React, TypeScript, Vite, Monaco Editor (nhân của VS Code) |
 | Backend | Node.js, Express, TypeScript, Zod |
-| Dữ liệu | PostgreSQL, Prisma |
+| Dữ liệu | Cloud Firestore (Firebase), Firebase Admin SDK |
 | Hàng đợi chấm bài | Redis, BullMQ |
 | Môi trường chạy mã | Docker sandbox tự xây hoặc Judge0 tự lưu trữ (chưa chốt, xem [ADR-0001](docs/adr/0001-sandbox-judge0-hay-docker.md)) |
-| Đóng gói | Docker Compose |
+| Đóng gói | Docker Compose, Firebase Emulator Suite |
 
 ## Cấu trúc repo
 
@@ -67,7 +67,7 @@ Kiểm tra sơ đồ Mermaid cần `npm install -g @mermaid-js/mermaid-cli`, r�
 
 | Milestone | Nội dung |
 |---|---|
-| M0 | Chốt quyết định, ERD, đặc tả API, kế hoạch kiểm thử |
+| M0 | Chốt quyết định, mô hình dữ liệu Firestore, đặc tả API, kế hoạch kiểm thử |
 | M1 | Lát cắt dọc chấm bài: nộp bài, hàng đợi, sandbox, verdict |
 | M2 | Tài khoản, khóa học, học tập, kiểm duyệt |
 | M3 | QUIZ, bài đánh giá, chấm lại, quản trị |

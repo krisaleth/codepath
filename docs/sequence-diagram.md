@@ -26,12 +26,22 @@
 | Người học | Tác nhân chính | — |
 | Frontend | Trình soạn code, hiển thị trạng thái và kết quả | React, Monaco |
 | API | Kiểm tra quyền, tạo bài nộp, trả kết quả | Express.js, Zod |
-| PostgreSQL | Lưu bài nộp, kết quả từng test, tiến độ | PostgreSQL, Prisma |
+| Firestore | Lưu bài nộp, kết quả từng test, tiến độ | Cloud Firestore, Firebase Admin SDK |
 | Hàng đợi | Chuyển việc chấm bài sang worker | Redis, BullMQ |
 | Worker | Lấy việc, chạy test, tính điểm và verdict (UC-25) | Node.js |
 | Sandbox | Chạy mã cô lập (UC-27) | Docker hoặc Judge0 |
 | Bộ định thời | Phục hồi bài nộp kẹt (UC-26) | — |
 | Khách, Giảng viên, Admin | Tác nhân của các use case ở mục 4–7 (Khách đăng ký, giảng viên gửi duyệt, admin kiểm duyệt) | — |
+
+### 1.1 Quy ước về Firestore
+
+Các sơ đồ dùng chung vài cách diễn đạt, được hiểu theo Cloud Firestore (xem requirements §1.2):
+
+- **"Chỉ khi đang X"** là cập nhật có điều kiện: transaction đọc document, kiểm tra trạng thái còn là X rồi mới ghi. Kết quả của bước này là cập nhật được hoặc không, thay cho "số dòng được cập nhật" của CSDL quan hệ.
+- **"Duy nhất"** nghĩa là ID document xác định, tạo bằng `create()`: nếu đã tồn tại thì Firestore báo `ALREADY_EXISTS`.
+- **"Cùng một transaction"** là một transaction hoặc batch Firestore; mỗi lần tối đa 500 thao tác ghi.
+- **Truy cập dữ liệu** chỉ qua API và worker bằng Firebase Admin SDK. Frontend không đọc Firestore trực tiếp, nên các sơ đồ không có mũi tên từ Frontend tới Firestore.
+- **Truy vấn nhiều điều kiện** (ví dụ tìm bài `RUNNING` quá 2 phút của bộ định thời) cần chỉ mục tổng hợp, khai báo trong `firestore.indexes.json`.
 
 ## 2. UC-09 — Nộp bài và xem kết quả chấm
 
@@ -45,7 +55,7 @@ sequenceDiagram
   actor L as Người học
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
   participant Q as Hàng đợi
   participant W as Worker
   participant SB as Sandbox
@@ -81,7 +91,7 @@ sequenceDiagram
     and Worker chấm bài
       Q->>W: Giao job (mã bài nộp)
       W->>DB: Chuyển RUNNING, chỉ khi đang QUEUED
-      DB-->>W: Số dòng được cập nhật
+      DB-->>W: Kết quả cập nhật có điều kiện
 
       alt Không nhận được (job trùng hoặc bài đã đổi trạng thái)
         W->>W: Bỏ qua job
@@ -135,7 +145,7 @@ sequenceDiagram
 sequenceDiagram
   autonumber
   participant S as Bộ định thời
-  participant DB as PostgreSQL
+  participant DB as Firestore
   participant Q as Hàng đợi
   participant W as Worker
   participant FE as Frontend
@@ -163,7 +173,7 @@ sequenceDiagram
 
   Note over W,DB: Worker treo hoặc chậm, gửi kết quả sau khi bài đã đổi trạng thái
   W->>DB: Lưu kết quả, chỉ khi bài vẫn đang RUNNING
-  DB-->>W: Không dòng nào được cập nhật, bỏ kết quả
+  DB-->>W: Không cập nhật được vì bài đã đổi trạng thái, bỏ kết quả
 
   ST->>API: GET danh sách bài nộp INTERNAL_ERROR
   API->>API: Kiểm tra quyền (giảng viên chỉ khóa của mình, admin toàn hệ thống)
@@ -191,7 +201,8 @@ sequenceDiagram
 2. **Tạo bài nộp rồi mới đưa vào hàng đợi, không nguyên tử.** Nếu API lỗi giữa hai bước, bài nộp nằm ở `QUEUED` mà không có job, và chỉ được đưa lại sau 5 phút nhờ UC-26. Chấp nhận độ trễ này, hay dùng outbox, hay trả lỗi ngay cho người học khi đưa vào hàng đợi thất bại?
 3. **Chạy hết test case.** Điểm bằng tổng trọng số test đạt nên worker chạy toàn bộ test, chỉ dừng khi biên dịch lỗi hoặc hạ tầng lỗi. Với bài nhiều test, thời gian chấm tăng theo số test (liên quan NFR-10).
 4. **Biên dịch lặp lại.** Mỗi test chạy trong sandbox riêng (§3.3) và UC-27 biên dịch trong từng lần chạy. Biên dịch một lần rồi dùng lại là tối ưu triển khai, không đổi hành vi. Nên gắn với quyết định Judge0 hay runner tự xây (câu hỏi mở 1).
-5. **Số lần đưa lại.** Bộ định thời cần đếm số lần đưa lại cho mỗi bài `QUEUED`. Requirements chưa quy định chỗ lưu (cột riêng hay dùng bộ đếm retry của BullMQ), cần chốt khi thiết kế CSDL.
+5. **Số lần đưa lại.** Bộ định thời cần đếm số lần đưa lại cho mỗi bài `QUEUED`. Requirements chưa quy định chỗ lưu (trường riêng trong document bài nộp hay dùng bộ đếm retry của BullMQ), cần chốt khi thiết kế mô hình dữ liệu.
+6. **Chỉ mục và giới hạn của Firestore.** Truy vấn của bộ định thời (trạng thái cộng thời điểm cập nhật) và thống kê cần chỉ mục tổng hợp. Kết quả từng test lưu thành mảng trong một document thì bị giới hạn 1 MiB mỗi document; lưu thành subcollection thì mỗi test một document và transaction chỉ ghi được tối đa 500 thao tác. Cần chọn khi thiết kế mô hình dữ liệu.
 
 ---
 
@@ -207,7 +218,7 @@ sequenceDiagram
   actor L as Người học
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
 
   L->>FE: Mở bài đánh giá
   FE->>API: GET /assessments/id
@@ -262,7 +273,7 @@ sequenceDiagram
   actor L as Người học
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
   participant Q as Hàng đợi
   participant W as Worker
 
@@ -278,9 +289,9 @@ sequenceDiagram
   end
 
   API->>DB: Chuyển SUBMITTED, chỉ khi đang IN_PROGRESS
-  DB-->>API: Số dòng được cập nhật
+  DB-->>API: Kết quả cập nhật có điều kiện
 
-  alt Không có dòng nào được cập nhật
+  alt Không cập nhật được vì điều kiện không còn đúng
     API-->>FE: Trạng thái hiện tại, không nộp lần hai
   else Chuyển được
     API->>API: Chấm trắc nghiệm ngay, so với đáp án trong bản sao câu hỏi
@@ -344,7 +355,7 @@ sequenceDiagram
   actor L as Người học
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
   participant Q as Hàng đợi
 
   Note over S,DB: Quét định kỳ, ví dụ mỗi 30 giây
@@ -353,7 +364,7 @@ sequenceDiagram
     S->>DB: Tìm lần làm IN_PROGRESS đã quá hạn
     DB-->>S: Danh sách lần làm quá hạn
     S->>DB: Chuyển SUBMITTED bằng nháp đã lưu, chỉ khi đang IN_PROGRESS
-    DB-->>S: Số dòng được cập nhật
+    DB-->>S: Kết quả cập nhật có điều kiện
 
     alt Chuyển được
       S->>S: Chấm trắc nghiệm ngay
@@ -362,16 +373,16 @@ sequenceDiagram
         S->>Q: Thêm job chấm cho từng bài code
       end
       Note over S,Q: Từ đây chấm như sơ đồ 3.2
-    else Không có dòng nào được cập nhật
+    else Không cập nhật được vì điều kiện không còn đúng
       Note over S: Người học vừa nộp, bỏ qua
     end
   and Người học nộp đúng lúc hết giờ
     L->>FE: Nhấn Nộp bài
     FE->>API: POST /attempts/id/submit
     API->>DB: Chuyển SUBMITTED, chỉ khi đang IN_PROGRESS
-    DB-->>API: Số dòng được cập nhật
+    DB-->>API: Kết quả cập nhật có điều kiện
 
-    alt Không có dòng nào được cập nhật
+    alt Không cập nhật được vì điều kiện không còn đúng
       API-->>FE: Trạng thái hiện tại, bài đã được nộp
       FE-->>L: Hiển thị bài đã nộp
     else Chuyển được
@@ -379,23 +390,23 @@ sequenceDiagram
     end
   end
 
-  Note over DB: Chỉ một câu lệnh cập nhật được dòng, bài không bị nộp hai lần
+  Note over DB: Chỉ một transaction cập nhật được, bài không bị nộp hai lần
 ```
 
 | Bước | Hành động | Ràng buộc liên quan |
 |---|---|---|
 | 1–4 | Bộ định thời tìm lần làm quá hạn và chuyển `SUBMITTED` bằng nháp đã lưu, chỉ khi đang `IN_PROGRESS` | UC-26, BR-15, AC-25 |
 | 5–7 | Chấm trắc nghiệm, đưa phần code vào hàng đợi | UC-26, UC-25 |
-| 8–13 | Người học nộp cùng lúc: bên đến sau không cập nhật được dòng nào nên không nộp hai lần | UC-11 (4b), UC-26 (2a), NFR-11 |
+| 8–13 | Người học nộp cùng lúc: bên đến sau không cập nhật được vì trạng thái đã đổi nên không nộp hai lần | UC-11 (4b), UC-26 (2a), NFR-11 |
 
 ### 3.4 Điểm thiết kế cần xác nhận
 
 1. **Quay lại sau khi hết hạn nhưng trước lần quét của bộ định thời.** Máy chủ quyết định thời gian (BR-15), nên API cần nộp bằng nháp đã lưu thay vì cho tiếp tục làm bài. UC-11 chưa nêu rõ trường hợp này.
 2. **Ai chuyển `GRADED`.** Nếu không có phần code, API chuyển ngay. Nếu có, worker xử lý phần code sau cùng sẽ chuyển trong cùng transaction với việc lưu điểm. Cách khác là để bộ định thời quét các lần làm `SUBMITTED` đã chấm đủ, nhưng thêm độ trễ.
-3. **Một lần làm `IN_PROGRESS` cho mỗi cặp người học và bài đánh giá.** Để hai tab bấm Bắt đầu cùng lúc không tạo hai lần làm, cần ràng buộc ở CSDL (duy nhất một phần theo trạng thái). NFR-13 chưa liệt kê ràng buộc này.
+3. **Một lần làm `IN_PROGRESS` cho mỗi cặp người học và bài đánh giá.** Để hai tab bấm Bắt đầu cùng lúc không tạo hai lần làm, cần đảm bảo duy nhất ở tầng dữ liệu. Firestore không có ràng buộc duy nhất một phần theo trạng thái, nên dùng một document khóa có ID xác định (ví dụ `{userId}_{assessmentId}`), tạo bằng `create()` khi bắt đầu và xóa khi nộp, hoặc kiểm tra trong cùng transaction. NFR-13 chưa liệt kê trường hợp này.
 4. **Lưu nháp sau hạn.** BR-15 chỉ nói về nội dung nộp. Sơ đồ giả định nháp gửi sau hạn (cộng 10 giây du di) cũng bị bỏ qua.
 5. **Chấm trắc nghiệm đồng bộ.** API và bộ định thời chấm ngay vì chỉ so khớp đáp án. Nếu bài rất nhiều câu có thể chuyển sang worker mà không đổi hành vi.
-6. **Kết quả phần code không vào lịch sử bài nộp (BR-19).** Worker dùng lại luồng UC-25 nhưng ghi kết quả theo lần làm. Khi thiết kế ERD cần tách bảng kết quả hoặc đánh dấu nguồn của kết quả.
+6. **Kết quả phần code không vào lịch sử bài nộp (BR-19).** Worker dùng lại luồng UC-25 nhưng ghi kết quả theo lần làm. Khi thiết kế mô hình dữ liệu cần tách collection kết quả hoặc đánh dấu nguồn của kết quả.
 7. **Lần làm bị bỏ dở có tính lượt không.** Requirements chưa nói. Sơ đồ coi mọi lần làm đã bắt đầu là đã dùng một lượt, kể cả khi bị tự nộp lúc hết giờ. Cần chốt, vì ảnh hưởng đến BR-16.
 
 ---
@@ -412,7 +423,7 @@ sequenceDiagram
   actor K as Khách
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
 
   K->>FE: Nhập email, mật khẩu, tên hiển thị, vai trò
   FE->>API: POST /auth/register
@@ -426,7 +437,7 @@ sequenceDiagram
     API->>DB: Tạo tài khoản đang hoạt động
 
     alt Email đã tồn tại
-      DB-->>API: Vi phạm ràng buộc duy nhất của email
+      DB-->>API: Document email đã tồn tại (ALREADY_EXISTS)
       API-->>FE: Lỗi 409
       FE-->>K: Báo email đã tồn tại, giữ dữ liệu đã nhập
     else Tạo được
@@ -452,7 +463,7 @@ sequenceDiagram
   actor U as Người dùng
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
 
   U->>FE: Nhập email và mật khẩu
   FE->>API: POST /auth/login
@@ -497,7 +508,7 @@ sequenceDiagram
   actor U as Người dùng
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
 
   U->>FE: Thao tác cần đăng nhập
   FE->>API: Yêu cầu kèm access token
@@ -546,7 +557,7 @@ sequenceDiagram
   actor U as Người dùng
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
 
   U->>FE: Nhấn Đăng xuất
   FE->>API: POST /auth/logout (cookie refresh token)
@@ -563,10 +574,10 @@ sequenceDiagram
 
 ### 4.5 Điểm thiết kế cần xác nhận
 
-1. **Email trùng.** Sơ đồ dựa vào ràng buộc duy nhất của CSDL thay vì kiểm tra rồi mới tạo, để hai yêu cầu đồng thời không tạo hai tài khoản. NFR-13 chưa liệt kê ràng buộc này; cần thêm khi thiết kế ERD. Mã lỗi 409 chỉ để minh họa.
+1. **Email trùng.** Sơ đồ dựa vào việc tạo document có ID xác định (document theo email đã chuẩn hóa, ghi cùng document người dùng trong một transaction hoặc batch) thay vì kiểm tra rồi mới tạo, để hai yêu cầu đồng thời không tạo hai tài khoản. NFR-13 đã nêu cách này. Mã lỗi 409 chỉ để minh họa.
 2. **Thứ tự kiểm tra khi đăng nhập.** Chỉ báo "tài khoản bị vô hiệu hóa" sau khi mật khẩu đã đúng, để người lạ không dò được email nào tồn tại (UC-02, 2a). Vì vậy sơ đồ so khớp mật khẩu trước khi xét `isActive`.
-3. **Nơi lưu refresh token.** Muốn thu hồi khi đăng xuất thì máy chủ phải lưu refresh token (hoặc bản băm của nó). NFR-05 chưa nói lưu ở PostgreSQL hay Redis, và chưa nói có xoay vòng token mỗi lần làm mới hay không. Sơ đồ ghi PostgreSQL cho đơn giản.
-4. **Kiểm tra `isActive` mỗi yêu cầu.** Mỗi yêu cầu cần thêm một truy vấn CSDL. Có thể đệm kết quả ngắn hạn để giảm tải, nhưng khi đó việc vô hiệu hóa (UC-22) có hiệu lực chậm hơn "từ yêu cầu kế tiếp" mà AC-30 yêu cầu.
+3. **Nơi lưu refresh token.** Muốn thu hồi khi đăng xuất thì máy chủ phải lưu refresh token (hoặc bản băm của nó). NFR-05 chưa nói lưu ở Firestore hay Redis, và chưa nói có xoay vòng token mỗi lần làm mới hay không. Sơ đồ ghi Firestore cho đơn giản (document có ID là bản băm của token, kèm hạn dùng).
+4. **Kiểm tra `isActive` mỗi yêu cầu.** Mỗi yêu cầu cần thêm một lượt đọc Firestore (tính phí theo lượt đọc). Có thể đệm kết quả ngắn hạn để giảm tải, nhưng khi đó việc vô hiệu hóa (UC-22) có hiệu lực chậm hơn "từ yêu cầu kế tiếp" mà AC-30 yêu cầu.
 
 ---
 
@@ -580,7 +591,7 @@ sequenceDiagram
   actor L as Người học
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
   participant SB as Sandbox
 
   L->>FE: Nhấn Chạy thử (chọn test công khai hoặc nhập đầu vào)
@@ -650,7 +661,7 @@ sequenceDiagram
   actor GV as Giảng viên
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
   participant SB as Sandbox
 
   GV->>FE: Nhấn Gửi duyệt
@@ -683,9 +694,9 @@ sequenceDiagram
       FE-->>GV: Liệt kê từng mục còn thiếu, giữ nguyên trạng thái
     else Đủ điều kiện
       API->>DB: Chuyển PENDING_REVIEW, chỉ khi đang DRAFT hoặc REJECTED
-      DB-->>API: Số dòng được cập nhật
+      DB-->>API: Kết quả cập nhật có điều kiện
 
-      alt Không có dòng nào được cập nhật
+      alt Không cập nhật được vì điều kiện không còn đúng
         API-->>FE: Lỗi 409
         FE-->>GV: Trạng thái khóa học đã thay đổi, tải lại
       else Chuyển được
@@ -716,7 +727,7 @@ sequenceDiagram
   actor GV as Giảng viên
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
 
   AD->>FE: Mở danh sách khóa học chờ duyệt
   FE->>API: GET /admin/courses (trạng thái PENDING_REVIEW)
@@ -738,9 +749,9 @@ sequenceDiagram
     FE-->>AD: Hiển thị lỗi
   else Hợp lệ
     API->>DB: Chuyển PUBLISHED, hoặc REJECTED kèm lý do, chỉ khi đang PENDING_REVIEW
-    DB-->>API: Số dòng được cập nhật
+    DB-->>API: Kết quả cập nhật có điều kiện
 
-    alt Không có dòng nào được cập nhật
+    alt Không cập nhật được vì điều kiện không còn đúng
       API-->>FE: Lỗi 409
       FE-->>AD: Khóa học đã được xử lý, tải lại danh sách
     else Xử lý được
@@ -768,7 +779,7 @@ sequenceDiagram
 
 ### 6.3 Điểm thiết kế cần xác nhận
 
-1. **Kiểm tra và chuyển trạng thái không nguyên tử.** Giữa lúc kiểm tra điều kiện và lúc chuyển `PENDING_REVIEW`, giảng viên vẫn sửa được khóa học (ví dụ từ tab khác) nên có thể xóa đi thứ vừa được kiểm tra. Cần kiểm tra lại trong cùng transaction với việc chuyển trạng thái, hoặc dùng cột phiên bản để phát hiện thay đổi. Điều kiện trạng thái ở bước chuyển chỉ chặn gửi hai lần, không chặn sửa xen giữa.
+1. **Kiểm tra và chuyển trạng thái không nguyên tử.** Giữa lúc kiểm tra điều kiện và lúc chuyển `PENDING_REVIEW`, giảng viên vẫn sửa được khóa học (ví dụ từ tab khác) nên có thể xóa đi thứ vừa được kiểm tra. Cần kiểm tra lại trong cùng transaction với việc chuyển trạng thái, hoặc dùng trường phiên bản để phát hiện thay đổi. Điều kiện trạng thái ở bước chuyển chỉ chặn gửi hai lần, không chặn sửa xen giữa.
 2. **Chạy lại lời giải tham chiếu hay dùng kết quả đã lưu** (câu hỏi mở số 8 ở requirements §10). Sơ đồ vẽ phương án chạy lại trong khối `opt`. Phương án này tốn thời gian theo số bài, số ngôn ngữ và số test, nên dễ quá thời gian chờ của một yêu cầu HTTP đồng bộ. Phương án dùng kết quả kiểm chứng đã lưu thì bỏ khối này, nhưng cần đánh dấu kết quả hết hiệu lực khi test case hoặc lời giải thay đổi.
 3. **Một endpoint duyệt và từ chối.** Sơ đồ gộp hai thao tác để ngắn gọn. Khi viết đặc tả API có thể tách thành hai endpoint, miễn cùng dùng điều kiện trạng thái `PENDING_REVIEW` để hai admin xử lý đồng thời không ghi đè nhau (UC-20, 3c).
 4. **Admin xem toàn bộ nội dung** gồm cả test ẩn (BR-05, AC-45), vì cần đánh giá chất lượng bài tập trước khi duyệt. Điều này khác với người học, không bao giờ nhận dữ liệu test ẩn (BR-09).
@@ -785,7 +796,7 @@ sequenceDiagram
   actor L as Người học
   participant FE as Frontend
   participant API as API
-  participant DB as PostgreSQL
+  participant DB as Firestore
 
   L->>FE: Mở mục QUIZ
   FE->>API: GET /lessons/id/quiz
@@ -845,7 +856,7 @@ sequenceDiagram
 
 ### 7.1 Điểm thiết kế cần xác nhận
 
-1. **Điểm của mục.** Điểm của mục là điểm cao nhất các lần làm. Requirements chưa nói lưu thành cột riêng hay tính khi đọc. Lưu riêng thì đọc nhanh nhưng phải cập nhật trong cùng transaction, như sơ đồ.
-2. **Sửa câu hỏi sau khi người học đã làm.** Giảng viên sửa câu hỏi thì điểm và trạng thái hoàn thành cũ được giữ nguyên (UC-29, ngoại lệ cuối). Để lịch sử lần làm vẫn hiển thị đúng, mỗi lần làm nên lưu kèm nội dung câu hỏi và đáp án đã chọn, hoặc câu hỏi được lưu theo phiên bản. Cần chốt khi thiết kế ERD.
+1. **Điểm của mục.** Điểm của mục là điểm cao nhất các lần làm. Requirements chưa nói lưu thành trường riêng trong document tiến độ hay tính khi đọc. Lưu riêng thì đọc nhanh nhưng phải cập nhật trong cùng transaction, như sơ đồ.
+2. **Sửa câu hỏi sau khi người học đã làm.** Giảng viên sửa câu hỏi thì điểm và trạng thái hoàn thành cũ được giữ nguyên (UC-29, ngoại lệ cuối). Để lịch sử lần làm vẫn hiển thị đúng, mỗi lần làm nên lưu kèm nội dung câu hỏi và đáp án đã chọn, hoặc câu hỏi được lưu theo phiên bản. Cần chốt khi thiết kế mô hình dữ liệu.
 3. **Chấm đồng bộ trong API.** Chấm trắc nghiệm chỉ so khớp đáp án nên không qua worker. Nếu mục có rất nhiều câu thì có thể chuyển sang worker mà không đổi hành vi (cùng nhận xét ở 3.4).
-4. **Tiến độ không tạo trùng.** Ràng buộc duy nhất theo `(người học, mục học)` (NFR-13) giúp hai lần nộp đồng thời không tạo hai bản ghi tiến độ. Thao tác ghi là "tạo nếu chưa có", không ghi đè trạng thái đã hoàn thành.
+4. **Tiến độ không tạo trùng.** Document tiến độ có ID xác định `{người học}_{mục học}` (NFR-13) nên hai lần nộp đồng thời không tạo hai bản ghi tiến độ. Thao tác ghi là "tạo nếu chưa có" (`create()`, hoặc đọc rồi ghi trong transaction), không ghi đè trạng thái đã hoàn thành.

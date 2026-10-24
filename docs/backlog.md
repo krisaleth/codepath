@@ -6,14 +6,14 @@ Tổng cộng 43 mục. Tạo issue lên GitHub bằng `python tools/create_issu
 
 ## M0 Tài liệu và thiết lập repo
 
-Chốt quyết định, ERD, đặc tả API, kế hoạch kiểm thử.
+Chốt quyết định, mô hình dữ liệu Firestore, đặc tả API, kế hoạch kiểm thử.
 
 | Mục | Nhãn |
 |---|---|
 | Chốt các câu hỏi mở ở requirements §10 và ghi ADR | type:decision |
 | Chốt giấy phép và chế độ hiển thị repo | type:decision |
 | Lập kế hoạch kiểm thử theo tiêu chí chấp nhận | type:docs |
-| Thiết kế ERD | type:docs |
+| Thiết kế mô hình dữ liệu Firestore | type:docs |
 | Đặc tả API (OpenAPI) | type:docs |
 
 ## M1 Lát cắt dọc chấm bài

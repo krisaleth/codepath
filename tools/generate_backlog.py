@@ -21,7 +21,7 @@ REPO_URL = "https://github.com/krisaleth/codepath"
 BLOB = f"{REPO_URL}/blob/main/docs"
 
 MILESTONES = [
-    ("M0 Tài liệu và thiết lập repo", "Chốt quyết định, ERD, đặc tả API, kế hoạch kiểm thử."),
+    ("M0 Tài liệu và thiết lập repo", "Chốt quyết định, mô hình dữ liệu Firestore, đặc tả API, kế hoạch kiểm thử."),
     ("M1 Lát cắt dọc chấm bài", "Nộp bài, hàng đợi, sandbox, verdict: giảm rủi ro kỹ thuật lớn nhất (UC-09, UC-25, UC-27)."),
     ("M2 Khóa học và học tập", "Tài khoản, khóa học, nội dung, ghi danh, học và kiểm duyệt."),
     ("M3 Đánh giá và quản trị", "QUIZ, bài đánh giá, chấm lại, phục hồi, thống kê, quản trị."),
@@ -167,8 +167,8 @@ def infra_issues():
     I.append(plain("Chốt các câu hỏi mở ở requirements §10 và ghi ADR", M0, "type:decision",
                    "Mỗi câu hỏi mở thành một ADR ngắn trong `docs/adr/`, sau đó cập nhật requirements, use case và changelog.\n\n- [ ] Judge0 hay runner Docker tự xây (ADR-0001, chốt sau spike M1)\n- [ ] Lần làm bài đánh giá bị bỏ dở có tính lượt không\n- [ ] Quay lại sau khi hết hạn nhưng trước lần quét của bộ định thời\n- [ ] Hủy ghi danh khi đang làm bài đánh giá\n- [ ] Giảng viên bị vô hiệu hóa thì khóa học ra sao\n- [ ] Khi gửi duyệt có chạy lại lời giải tham chiếu không\n- [ ] Giảng viên có rút lại yêu cầu duyệt được không\n- [ ] Khóa `ARCHIVED` có khôi phục được không",
                    "requirements.md §10, state-diagrams.md mục 4, sequence-diagrams.md mục 2.3 và 3.4"))
-    I.append(plain("Thiết kế ERD", M0, "type:docs",
-                   "Mô hình dữ liệu cho toàn bộ hệ thống. Các điểm cần thể hiện:\n\n- [ ] Bản sao câu hỏi và bài tập trong bài đánh giá (BR-20)\n- [ ] Tiến độ gắn với (người học, mục học), không phụ thuộc ghi danh (§3.5)\n- [ ] Bản ghi kết quả chấm lại, có người thực hiện (BR-11)\n- [ ] Kết quả code của bài đánh giá lưu theo lần làm (BR-19)\n- [ ] Ràng buộc duy nhất cho ghi danh, tiến độ và một lần làm `IN_PROGRESS` (NFR-13)\n- [ ] Nơi lưu số lần đưa lại của bài `QUEUED` kẹt (§3.3)",
+    I.append(plain("Thiết kế mô hình dữ liệu Firestore", M0, "type:docs",
+                   "Mô hình dữ liệu cho toàn bộ hệ thống: collection, ID document, chỉ mục. Các điểm cần thể hiện:\n\n- [ ] Bản sao câu hỏi và bài tập trong bài đánh giá (BR-20)\n- [ ] Tiến độ gắn với (người học, mục học), không phụ thuộc ghi danh (§3.5)\n- [ ] Bản ghi kết quả chấm lại, có người thực hiện (BR-11)\n- [ ] Kết quả code của bài đánh giá lưu theo lần làm (BR-19)\n- [ ] ID document xác định để đảm bảo duy nhất cho ghi danh, tiến độ, email và một lần làm `IN_PROGRESS` (NFR-13)\n- [ ] Nơi lưu số lần đưa lại của bài `QUEUED` kẹt (§3.3)\n- [ ] Chỉ mục tổng hợp cho truy vấn của bộ định thời và thống kê (`firestore.indexes.json`)\n- [ ] Security Rules từ chối mọi truy cập trực tiếp từ client (BR-05, BR-09)\n- [ ] Cách lưu kết quả từng test: mảng trong document hay subcollection (giới hạn 1 MiB mỗi document, 500 thao tác ghi mỗi transaction)",
                    "BR-04, BR-11, BR-19, BR-20, NFR-13, §3.5"))
     I.append(plain("Đặc tả API (OpenAPI)", M0, "type:docs",
                    "Suy ra từ use case và sơ đồ tuần tự; thay các endpoint minh họa bằng endpoint chính thức.\n\n- [ ] Endpoint, quyền, mã lỗi cho từng use case\n- [ ] Định dạng lỗi thống nhất (NFR-15)\n- [ ] Phân trang (NFR-14)",
@@ -177,7 +177,7 @@ def infra_issues():
                    "Mỗi AC thành một hoặc vài test; ghi rõ mức kiểm thử (unit, integration, sandbox).\n\n- [ ] Bảng AC → test\n- [ ] Danh sách chuyển trạng thái không hợp lệ cần test từ chối (state-diagrams.md mục 4)",
                    "AC-35, NFR-20"))
     I.append(plain("Dựng khung monorepo và Docker Compose", M1, "type:infra",
-                   "Khung chạy được cho API, web, worker, PostgreSQL và Redis.\n\n- [ ] Cấu trúc `apps/` và `packages/`\n- [ ] `docker-compose.yml` cho PostgreSQL, Redis\n- [ ] Migration Prisma đầu tiên\n- [ ] Biến môi trường theo `.env.example`",
+                   "Khung chạy được cho API, web, worker, Firestore (Emulator Suite) và Redis.\n\n- [ ] Cấu trúc `apps/` và `packages/`\n- [ ] `docker-compose.yml` cho Redis và Firebase Emulator Suite (Firestore)\n- [ ] `firestore.indexes.json` và Security Rules đầu tiên\n- [ ] Biến môi trường theo `.env.example`",
                    "NFR-17, NFR-19"))
     I.append(plain("Spike sandbox: chạy Python trong container cô lập", M1, "type:spike",
                    "Thử trong 1–2 ngày để chọn giữa Judge0 và runner Docker tự xây (ADR-0001).\n\n- [ ] Chạy mã Python với giới hạn thời gian và bộ nhớ\n- [ ] Không mạng, không root, hủy container sau khi chạy\n- [ ] Phân biệt được TLE, MLE, lỗi biên dịch, lỗi chạy\n- [ ] Đo thời gian chạy một test\n- [ ] Ghi kết quả vào ADR-0001",

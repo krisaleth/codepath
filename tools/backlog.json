@@ -2,7 +2,7 @@
   "milestones": [
     {
       "title": "M0 Tài liệu và thiết lập repo",
-      "description": "Chốt quyết định, ERD, đặc tả API, kế hoạch kiểm thử."
+      "description": "Chốt quyết định, mô hình dữ liệu Firestore, đặc tả API, kế hoạch kiểm thử."
     },
     {
       "title": "M1 Lát cắt dọc chấm bài",
@@ -117,12 +117,12 @@
       "ref": ""
     },
     {
-      "title": "Thiết kế ERD",
+      "title": "Thiết kế mô hình dữ liệu Firestore",
       "milestone": "M0 Tài liệu và thiết lập repo",
       "labels": [
         "type:docs"
       ],
-      "body": "Mô hình dữ liệu cho toàn bộ hệ thống. Các điểm cần thể hiện:\n\n- [ ] Bản sao câu hỏi và bài tập trong bài đánh giá (BR-20)\n- [ ] Tiến độ gắn với (người học, mục học), không phụ thuộc ghi danh (§3.5)\n- [ ] Bản ghi kết quả chấm lại, có người thực hiện (BR-11)\n- [ ] Kết quả code của bài đánh giá lưu theo lần làm (BR-19)\n- [ ] Ràng buộc duy nhất cho ghi danh, tiến độ và một lần làm `IN_PROGRESS` (NFR-13)\n- [ ] Nơi lưu số lần đưa lại của bài `QUEUED` kẹt (§3.3)\n\n**Tham chiếu:** BR-04, BR-11, BR-19, BR-20, NFR-13, §3.5",
+      "body": "Mô hình dữ liệu cho toàn bộ hệ thống: collection, ID document, chỉ mục. Các điểm cần thể hiện:\n\n- [ ] Bản sao câu hỏi và bài tập trong bài đánh giá (BR-20)\n- [ ] Tiến độ gắn với (người học, mục học), không phụ thuộc ghi danh (§3.5)\n- [ ] Bản ghi kết quả chấm lại, có người thực hiện (BR-11)\n- [ ] Kết quả code của bài đánh giá lưu theo lần làm (BR-19)\n- [ ] ID document xác định để đảm bảo duy nhất cho ghi danh, tiến độ, email và một lần làm `IN_PROGRESS` (NFR-13)\n- [ ] Nơi lưu số lần đưa lại của bài `QUEUED` kẹt (§3.3)\n- [ ] Chỉ mục tổng hợp cho truy vấn của bộ định thời và thống kê (`firestore.indexes.json`)\n- [ ] Security Rules từ chối mọi truy cập trực tiếp từ client (BR-05, BR-09)\n- [ ] Cách lưu kết quả từng test: mảng trong document hay subcollection (giới hạn 1 MiB mỗi document, 500 thao tác ghi mỗi transaction)\n\n**Tham chiếu:** BR-04, BR-11, BR-19, BR-20, NFR-13, §3.5",
       "ref": ""
     },
     {
@@ -140,7 +140,7 @@
       "labels": [
         "type:infra"
       ],
-      "body": "Khung chạy được cho API, web, worker, PostgreSQL và Redis.\n\n- [ ] Cấu trúc `apps/` và `packages/`\n- [ ] `docker-compose.yml` cho PostgreSQL, Redis\n- [ ] Migration Prisma đầu tiên\n- [ ] Biến môi trường theo `.env.example`\n\n**Tham chiếu:** NFR-17, NFR-19",
+      "body": "Khung chạy được cho API, web, worker, Firestore (Emulator Suite) và Redis.\n\n- [ ] Cấu trúc `apps/` và `packages/`\n- [ ] `docker-compose.yml` cho Redis và Firebase Emulator Suite (Firestore)\n- [ ] `firestore.indexes.json` và Security Rules đầu tiên\n- [ ] Biến môi trường theo `.env.example`\n\n**Tham chiếu:** NFR-17, NFR-19",
       "ref": ""
     },
     {

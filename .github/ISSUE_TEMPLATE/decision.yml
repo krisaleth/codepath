@@ -22,4 +22,4 @@ body:
     id: impact
     attributes:
       label: Tài liệu bị ảnh hưởng
-      description: requirements, use case, sơ đồ, ERD
+      description: requirements, use case, sơ đồ, mô hình dữ liệu
