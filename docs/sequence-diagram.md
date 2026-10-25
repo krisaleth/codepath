@@ -16,6 +16,12 @@
 5. [UC-08 — Chạy thử code](#5-uc-08--chạy-thử-code)
 6. [UC-17, UC-28, UC-20 — Gửi duyệt và kiểm duyệt khóa học](#6-uc-17-uc-28-uc-20--gửi-duyệt-và-kiểm-duyệt-khóa-học)
 7. [UC-29 — Làm mục học QUIZ](#7-uc-29--làm-mục-học-quiz)
+8. [UC-06 — Ghi danh và hủy ghi danh khóa học](#8-uc-06--ghi-danh-và-hủy-ghi-danh-khóa-học)
+9. [UC-07 — Học nội dung và đánh dấu hoàn thành](#9-uc-07--học-nội-dung-và-đánh-dấu-hoàn-thành)
+10. [UC-15 — Tạo bài tập code và test case](#10-uc-15--tạo-bài-tập-code-và-test-case)
+11. [UC-16 — Tạo mục QUIZ và soạn câu hỏi](#11-uc-16--tạo-mục-quiz-và-soạn-câu-hỏi)
+12. [UC-30 — Tạo và cấu hình bài đánh giá](#12-uc-30--tạo-và-cấu-hình-bài-đánh-giá)
+13. [UC-22, UC-21 — Quản lý người dùng và lưu trữ khóa học](#13-uc-22-uc-21--quản-lý-người-dùng-và-lưu-trữ-khóa-học)
 
 ---
 
@@ -31,7 +37,7 @@
 | Worker | Lấy việc, chạy test, tính điểm và verdict (UC-25) | Node.js |
 | Sandbox | Chạy mã cô lập (UC-27) | Docker hoặc Judge0 |
 | Bộ định thời | Phục hồi bài nộp kẹt (UC-26) | — |
-| Khách, Giảng viên, Admin | Tác nhân của các use case ở mục 4–7 (Khách đăng ký, giảng viên gửi duyệt, admin kiểm duyệt) | — |
+| Khách, Giảng viên, Admin | Tác nhân của các use case ở mục 4–13 (Khách đăng ký, giảng viên soạn nội dung và gửi duyệt, admin kiểm duyệt và quản lý) | — |
 
 ### 1.1 Quy ước về Firestore
 
@@ -39,7 +45,7 @@ Các sơ đồ dùng chung vài cách diễn đạt, được hiểu theo Cloud 
 
 - **"Chỉ khi đang X"** là cập nhật có điều kiện: transaction đọc document, kiểm tra trạng thái còn là X rồi mới ghi. Kết quả của bước này là cập nhật được hoặc không, thay cho "số dòng được cập nhật" của CSDL quan hệ.
 - **"Duy nhất"** nghĩa là ID document xác định, tạo bằng `create()`: nếu đã tồn tại thì Firestore báo `ALREADY_EXISTS`.
-- **"Cùng một transaction"** là một transaction hoặc batch Firestore; mỗi lần tối đa 500 thao tác ghi.
+- **"Cùng một transaction"** là một transaction hoặc batch Firestore. Giới hạn hiện nay là 10 MiB mỗi yêu cầu, 1 MiB mỗi document và 270 giây mỗi transaction; không còn giới hạn số thao tác ghi.
 - **Truy cập dữ liệu** chỉ qua API và worker bằng Firebase Admin SDK. Frontend không đọc Firestore trực tiếp, nên các sơ đồ không có mũi tên từ Frontend tới Firestore.
 - **Truy vấn nhiều điều kiện** (ví dụ tìm bài `RUNNING` quá 2 phút của bộ định thời) cần chỉ mục tổng hợp, khai báo trong `firestore.indexes.json`.
 
@@ -202,7 +208,7 @@ sequenceDiagram
 3. **Chạy hết test case.** Điểm bằng tổng trọng số test đạt nên worker chạy toàn bộ test, chỉ dừng khi biên dịch lỗi hoặc hạ tầng lỗi. Với bài nhiều test, thời gian chấm tăng theo số test (liên quan NFR-10).
 4. **Biên dịch lặp lại.** Mỗi test chạy trong sandbox riêng (§3.3) và UC-27 biên dịch trong từng lần chạy. Biên dịch một lần rồi dùng lại là tối ưu triển khai, không đổi hành vi. Nên gắn với quyết định Judge0 hay runner tự xây (câu hỏi mở 1).
 5. **Số lần đưa lại.** Bộ định thời cần đếm số lần đưa lại cho mỗi bài `QUEUED`. Requirements chưa quy định chỗ lưu (trường riêng trong document bài nộp hay dùng bộ đếm retry của BullMQ), cần chốt khi thiết kế mô hình dữ liệu.
-6. **Chỉ mục và giới hạn của Firestore.** Truy vấn của bộ định thời (trạng thái cộng thời điểm cập nhật) và thống kê cần chỉ mục tổng hợp. Kết quả từng test lưu thành mảng trong một document thì bị giới hạn 1 MiB mỗi document; lưu thành subcollection thì mỗi test một document và transaction chỉ ghi được tối đa 500 thao tác. Cần chọn khi thiết kế mô hình dữ liệu.
+6. **Chỉ mục và giới hạn của Firestore.** Truy vấn của bộ định thời (trạng thái cộng thời điểm cập nhật) và thống kê cần chỉ mục tổng hợp. Kết quả từng test lưu thành mảng trong một document thì bị giới hạn 1 MiB mỗi document; lưu thành subcollection thì mỗi test một document, ghi và đọc được từng test nhưng chấm một bài phải đọc nhiều document hơn. Cần chọn khi thiết kế mô hình dữ liệu.
 
 ---
 
@@ -241,6 +247,7 @@ sequenceDiagram
     else Đủ điều kiện
       API->>DB: Tạo lần làm IN_PROGRESS, ghi giờ bắt đầu và hạn nộp
       Note over API,DB: Hạn nộp là sớm hơn giữa bắt đầu cộng thời lượng và ngày đóng
+      Note over API,DB: Cùng transaction: đặt cờ đã có lần làm trên bài đánh giá nếu chưa đặt (khóa nội dung theo BR-20, xem 12.2)
       DB-->>API: Lần làm mới
       API-->>FE: Câu hỏi và bài tập (xáo trộn nếu cấu hình, không kèm đáp án đúng), hạn nộp, giờ máy chủ
       FE-->>L: Hiển thị đề và đồng hồ đếm ngược
@@ -860,3 +867,670 @@ sequenceDiagram
 2. **Sửa câu hỏi sau khi người học đã làm.** Giảng viên sửa câu hỏi thì điểm và trạng thái hoàn thành cũ được giữ nguyên (UC-29, ngoại lệ cuối). Để lịch sử lần làm vẫn hiển thị đúng, mỗi lần làm nên lưu kèm nội dung câu hỏi và đáp án đã chọn, hoặc câu hỏi được lưu theo phiên bản. Cần chốt khi thiết kế mô hình dữ liệu.
 3. **Chấm đồng bộ trong API.** Chấm trắc nghiệm chỉ so khớp đáp án nên không qua worker. Nếu mục có rất nhiều câu thì có thể chuyển sang worker mà không đổi hành vi (cùng nhận xét ở 3.4).
 4. **Tiến độ không tạo trùng.** Document tiến độ có ID xác định `{người học}_{mục học}` (NFR-13) nên hai lần nộp đồng thời không tạo hai bản ghi tiến độ. Thao tác ghi là "tạo nếu chưa có" (`create()`, hoặc đọc rồi ghi trong transaction), không ghi đè trạng thái đã hoàn thành.
+
+---
+
+## 8. UC-06 — Ghi danh và hủy ghi danh khóa học
+
+Ghi danh là một document có ID xác định từ người học và khóa học, nên không thể có hai ghi danh trùng nhau (BR-04, NFR-13). Hủy ghi danh chỉ xóa document này, tiến độ và bài nộp được giữ lại (§3.5).
+
+### 8.1 Ghi danh
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor L as Người học
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  L->>FE: Nhấn Ghi danh ở trang chi tiết khóa học
+  FE->>API: POST /courses/id/enrollments
+  API->>API: Xác thực, kiểm tra tài khoản còn hoạt động
+  API->>DB: Bắt đầu transaction, đọc khóa học (trạng thái, chủ sở hữu) và document ghi danh
+  DB-->>API: Khóa học và ghi danh nếu có
+
+  alt Khóa học không tồn tại hoặc không còn PUBLISHED
+    API-->>FE: Lỗi 404 hoặc 409
+    FE-->>L: Báo khóa học không nhận ghi danh
+  else Người dùng là chủ khóa học
+    API-->>FE: Lỗi 403
+    FE-->>L: Hiển thị lỗi
+  else Đã ghi danh
+    API-->>FE: Ghi danh hiện có, không tạo mới
+    FE-->>L: Chuyển đến trang học
+  else Được ghi danh
+    API->>DB: Tạo document ghi danh (ID gồm người dùng và khóa học)
+    DB-->>API: Đã tạo
+    Note over API,DB: Hai yêu cầu đồng thời: transaction đến sau tự chạy lại, thấy ghi danh đã có và trả về ghi danh hiện có
+    API-->>FE: Ghi danh mới
+    FE-->>L: Chuyển đến trang học của khóa học
+    Note over FE,L: Tiến độ cũ, nếu từng ghi danh, hiển thị lại vì tiến độ gắn với người học và mục học
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–5 | Xác thực, đọc khóa học và ghi danh trong transaction | FR-23, BR-04 |
+| 6–7 | Khóa học không tồn tại hoặc không còn `PUBLISHED` thì từ chối | UC-06 (2a), BR-01, AC-02 |
+| 8–9 | Chủ khóa học không ghi danh được khóa của mình | UC-06 (2b), AC-10 |
+| 10–11 | Đã ghi danh, kể cả yêu cầu đồng thời, thì trả về ghi danh hiện có | UC-06 (3a), BR-04, NFR-13, AC-09 |
+| 12–15 | Tạo ghi danh, chuyển đến trang học; tiến độ cũ hiển thị lại | UC-06 (3, 4), FR-23, §3.5 |
+
+### 8.2 Hủy ghi danh
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor L as Người học
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  L->>FE: Chọn Hủy ghi danh
+  FE->>API: GET /courses/id/enrollment
+  API->>DB: Đọc khóa học và ghi danh của người học
+  DB-->>API: Trạng thái khóa học và ghi danh
+  API-->>FE: Trạng thái khóa học, đã ghi danh hay chưa
+
+  alt Khóa học ARCHIVED
+    FE-->>L: Cảnh báo hủy rồi sẽ không ghi danh lại được
+  else Khóa học còn PUBLISHED
+    FE-->>L: Yêu cầu xác nhận hủy ghi danh
+  end
+
+  L->>FE: Xác nhận hủy
+  FE->>API: DELETE /courses/id/enrollment
+  API->>API: Xác thực, kiểm tra tài khoản còn hoạt động
+
+  alt Chưa ghi danh
+    API-->>FE: Lỗi 404
+    FE-->>L: Báo chưa ghi danh khóa học này
+  else Đã ghi danh
+    Note over API,DB: Chưa quyết định: nếu đang có lần làm bài đánh giá IN_PROGRESS thì từ chối hay hủy luôn (câu hỏi mở số 7)
+    API->>DB: Xóa document ghi danh
+    Note over DB: Tiến độ và bài nộp giữ nguyên
+    DB-->>API: Đã xóa
+    API-->>FE: Đã hủy ghi danh
+    FE-->>L: Quay về danh sách khóa học
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–7 | Lấy trạng thái khóa học; khóa `ARCHIVED` thì cảnh báo không ghi danh lại được | UC-06 (H1, H2), BR-06, §3.5 |
+| 8–12 | Xác nhận hủy; chưa ghi danh thì 404 | UC-06 (H2) |
+| 13–16 | Xóa ghi danh, giữ tiến độ và bài nộp; cách xử lý lần làm `IN_PROGRESS` chưa quyết định | UC-06 (H3, H2a), FR-23, §3.5, requirements §10 câu 7 |
+
+### 8.3 Điểm thiết kế cần xác nhận
+
+1. **Mã lỗi khi khóa học không nhận ghi danh.** UC-06 (2a) chỉ nói báo lỗi. Khóa chưa từng xuất bản nên trả 404 để không lộ sự tồn tại (AC-02), còn khóa `ARCHIVED` thì 409 kèm thông báo rõ. Sơ đồ gộp hai mã để gọn.
+2. **Hủy ghi danh khi đang có lần làm `IN_PROGRESS`** (UC-06 H2a, câu hỏi mở số 7 ở requirements §10). Nếu chọn hủy luôn lần làm thì việc xóa ghi danh và đóng lần làm phải nằm trong cùng một transaction.
+3. **Danh sách khóa học đã ghi danh và số ghi danh của khóa.** Firestore không có JOIN. Danh sách "khóa học của tôi" truy vấn ghi danh theo người học rồi đọc từng khóa. Số ghi danh theo khóa dùng truy vấn đếm theo khóa học, cần chỉ mục khi kết hợp thêm điều kiện (UC-18, FR-22).
+4. **Ghi danh lại khôi phục tiến độ.** Hủy ghi danh tuyệt đối không được xóa document tiến độ. Thao tác xóa trong sơ đồ chỉ chạm vào document ghi danh.
+
+---
+
+## 9. UC-07 — Học nội dung và đánh dấu hoàn thành
+
+Quyền truy cập luôn kiểm tra theo ID mục học trên máy chủ (BR-05). Phần trăm tiến độ tính theo §3.5: số mục hoàn thành chia tổng số mục hiện có, làm tròn xuống.
+
+### 9.1 Mở đề cương và mở một mục học
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor L as Người học
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  L->>FE: Mở trang học
+  FE->>API: GET /courses/id/outline
+  API->>API: Xác thực, kiểm tra tài khoản còn hoạt động
+  API->>DB: Đọc khóa học, ghi danh và đề cương (chương, mục, không kèm nội dung)
+  DB-->>API: Khóa học, ghi danh, đề cương
+  API->>DB: Đọc tiến độ của người học trong khóa
+  DB-->>API: Các mục đã hoàn thành
+  API-->>FE: Đề cương, trạng thái từng mục, phần trăm tiến độ
+  FE-->>L: Hiển thị đề cương
+
+  L->>FE: Chọn một mục
+  FE->>API: GET /lessons/id
+  API->>DB: Đọc mục học, khóa học chứa nó và ghi danh
+  DB-->>API: Mục học, khóa học, ghi danh
+
+  alt Mục không tồn tại (giảng viên đã xóa khi đang mở)
+    API-->>FE: Lỗi 404
+    FE-->>L: Báo mục không còn tồn tại, quay về đề cương
+  else Khóa không PUBLISHED, người dùng chưa ghi danh và không phải chủ khóa hay admin
+    API-->>FE: Lỗi 404
+    FE-->>L: Không tìm thấy khóa học
+  else Chưa ghi danh, mục không xem thử, không phải chủ khóa hay admin
+    API-->>FE: Lỗi 403, không trả nội dung
+    FE-->>L: Yêu cầu ghi danh để xem
+  else Có quyền truy cập
+    alt Mục TEXT
+      API-->>FE: Nội dung Markdown đã làm sạch
+    else Mục VIDEO
+      API-->>FE: Liên kết video ngoài
+    else Mục CODING
+      API-->>FE: Đề bài, mã khởi tạo, test công khai, không kèm test ẩn
+    else Mục QUIZ
+      API-->>FE: Câu hỏi, không kèm đáp án đúng
+    end
+    FE-->>L: Hiển thị mục, CODING và QUIZ chuyển sang chạy thử, nộp bài hoặc làm QUIZ
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–9 | Đọc đề cương kèm trạng thái hoàn thành và phần trăm tiến độ | UC-07 (1), FR-24, FR-25, §3.5 |
+| 10–13 | Chọn mục, kiểm tra quyền theo ID mục học | UC-07 (2, 3), BR-05 |
+| 14–15 | Mục đã bị giảng viên xóa khi đang mở thì quay về đề cương | UC-07 (4a) |
+| 16–17 | Khóa không `PUBLISHED` và chưa ghi danh thì 404, không lộ sự tồn tại | UC-07 (3b), AC-02 |
+| 18–19 | Chưa ghi danh và mục không xem thử thì 403, không trả nội dung | UC-07 (3a), BR-05, AC-01, AC-11 |
+| 20–24 | Hiển thị theo loại mục; CODING không kèm test ẩn, QUIZ không kèm đáp án đúng | UC-07 (4), BR-09, NFR-08 |
+
+### 9.2 Đánh dấu hoàn thành
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor L as Người học
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  L->>FE: Nhấn Đánh dấu hoàn thành (mục TEXT hoặc VIDEO)
+  FE->>API: PUT /lessons/id/progress
+  API->>API: Xác thực, kiểm tra tài khoản còn hoạt động
+  API->>DB: Bắt đầu transaction, đọc mục học, ghi danh và document tiến độ
+  DB-->>API: Mục học, ghi danh, tiến độ nếu có
+
+  alt Mục không tồn tại
+    API-->>FE: Lỗi 404
+    FE-->>L: Báo mục không còn tồn tại
+  else Chưa ghi danh
+    API-->>FE: Lỗi 403
+    FE-->>L: Yêu cầu ghi danh
+  else Mục không phải TEXT hoặc VIDEO
+    API-->>FE: Lỗi 400
+    FE-->>L: Hiển thị lỗi
+  else Hợp lệ
+    alt Đã hoàn thành từ trước
+      API-->>FE: Trạng thái hiện tại, không tạo thêm
+    else Chưa hoàn thành
+      API->>DB: Ghi document tiến độ (ID gồm người học và mục học) là hoàn thành
+      DB-->>API: Đã ghi
+    end
+    API->>DB: Đếm mục hoàn thành của người học trong khóa và tổng số mục hiện có
+    DB-->>API: Hai số liệu
+    API->>API: Phần trăm tiến độ bằng hoàn thành chia tổng, làm tròn xuống
+    API-->>FE: Mục hoàn thành, phần trăm tiến độ mới
+    FE-->>L: Cập nhật dấu hoàn thành và thanh tiến độ
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–5 | Xác thực, đọc mục học, ghi danh và tiến độ trong transaction | UC-07 (5), BR-05 |
+| 6–7 | Mục không tồn tại | UC-07 (4a) |
+| 8–9 | Chưa ghi danh | UC-07 (3a), BR-05 |
+| 10–11 | Mục CODING và QUIZ không đánh dấu thủ công, hoàn thành theo bài nộp hoặc điểm | FR-25, §3.5 |
+| 12 | Đánh dấu lặp lại không tạo thêm bản ghi | UC-07 (5a) |
+| 13–14 | Ghi tiến độ theo người học và mục học, không tạo trùng | UC-07 (6), NFR-13, §3.5 |
+| 15–19 | Tính lại phần trăm tiến độ theo tổng số mục hiện có | UC-07 (6a), §3.5, AC-24 |
+
+### 9.3 Điểm thiết kế cần xác nhận
+
+1. **Phần trăm tiến độ tính khi đọc.** Sơ đồ đếm bằng truy vấn đếm của Firestore mỗi lần cần, không lưu sẵn. Khóa nhiều mục và nhiều người học thì tốn lượt đọc; có thể lưu sẵn `completedCount` trong document ghi danh và cập nhật cùng transaction, đổi lại phải xử lý khi giảng viên thêm hoặc xóa mục (UC-07 6a).
+2. **Xóa mục học để lại tiến độ mồ côi.** Firestore không có xóa dây chuyền. Khi giảng viên xóa mục (UC-14), phải xóa luôn các document tiến độ của mục đó, nếu không phần trăm bị đếm thừa. Có thể hàng trăm document, nên xóa theo lô (BulkWriter) thay vì một transaction dài, vì mỗi transaction tối đa 270 giây.
+3. **Mục xem thử khi chưa ghi danh có lưu tiến độ không.** UC-07 cho phép xem nhưng requirements chưa nói. Sơ đồ giả định chỉ người đã ghi danh mới đánh dấu hoàn thành (bước 403).
+4. **403 và 404 không được lộ sự tồn tại** của khóa học chưa xuất bản (UC-07 3a, 3b; AC-02). Thứ tự kiểm tra trong sơ đồ phải giữ nguyên.
+5. **Test ẩn không bao giờ vào phản hồi mục CODING** (BR-09). Nên lưu test ẩn và lời giải tham chiếu ở collection riêng mà đường đọc của người học không bao giờ chạm tới, thay vì lọc trường sau khi đọc, để một lần quên lọc không làm lộ dữ liệu.
+
+---
+
+## 10. UC-15 — Tạo bài tập code và test case
+
+Luồng của giảng viên gồm lưu bài tập (10.1) và kiểm tra lời giải tham chiếu bằng sandbox (10.2, UC-27). Quy tắc chặn ở khóa `PUBLISHED` (AC-43) dựa vào kết quả kiểm tra, nên hai sơ đồ liên quan với nhau.
+
+### 10.1 Lưu bài tập
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor GV as Giảng viên
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  GV->>FE: Nhập đề bài, ngôn ngữ, mã khởi tạo, giới hạn, test case, lời giải tham chiếu
+  GV->>FE: Nhấn Lưu
+  FE->>API: PUT /lessons/id/exercise (toàn bộ nội dung bài tập)
+  API->>API: Xác thực, kiểm tra dữ liệu, tính mã băm của nội dung
+  API->>DB: Đọc khóa học (chủ sở hữu, trạng thái) và kiểm tra đã có bài nộp chưa
+  DB-->>API: Khóa học, có hoặc chưa có bài nộp
+
+  alt Không phải chủ khóa học
+    API-->>FE: Lỗi 403
+    FE-->>GV: Hiển thị lỗi
+  else Khóa PENDING_REVIEW hoặc ARCHIVED
+    API-->>FE: Lỗi 409
+    FE-->>GV: Không cho sửa
+  else Giới hạn vượt mức tối đa (10 giây, 512 MB) hoặc ngôn ngữ không được bật
+    API-->>FE: Lỗi 400
+    FE-->>GV: Báo từng trường sai
+  else Hợp lệ
+    opt Đã có bài nộp và chưa xác nhận
+      API-->>FE: Cảnh báo, cần xác nhận (bài nộp cũ giữ nguyên kết quả)
+      FE-->>GV: Hiển thị cảnh báo
+      GV->>FE: Xác nhận lưu
+      FE->>API: PUT /lessons/id/exercise (kèm xác nhận)
+    end
+
+    alt Khóa PUBLISHED
+      API->>DB: Đọc kết quả kiểm tra đã lưu theo mã băm của nội dung
+      DB-->>API: Kết quả kiểm tra hoặc không có
+
+      alt Thiếu test ẩn, hoặc không có kết quả kiểm tra đạt cho đúng nội dung này
+        API-->>FE: Lỗi 422, không lưu
+        FE-->>GV: Báo cần test ẩn và lời giải đạt toàn bộ test
+      else Đủ điều kiện
+        API->>DB: Lưu bài tập, test case, lời giải tham chiếu (cùng một lô ghi)
+        DB-->>API: Đã lưu
+        API-->>FE: Đã lưu
+        FE-->>GV: Hiển thị đã lưu
+      end
+    else Khóa DRAFT hoặc REJECTED
+      API->>DB: Lưu bài tập, test case, lời giải tham chiếu (cùng một lô ghi)
+      DB-->>API: Đã lưu
+      API-->>FE: Đã lưu, kèm cờ chưa đủ điều kiện gửi duyệt nếu thiếu test ẩn hoặc chưa kiểm tra đạt
+      FE-->>GV: Hiển thị đã lưu nháp
+    end
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–6 | Gửi toàn bộ nội dung bài tập, kiểm tra dữ liệu, đọc khóa học và bài nộp | UC-15 (1–3, 6), FR-12, FR-13, NFR-03 |
+| 7–8 | Khóa của giảng viên khác thì 403 | UC-15 (\*a), BR-02, AC-05 |
+| 9–10 | Khóa `PENDING_REVIEW` hoặc `ARCHIVED` không cho sửa | UC-15 (\*b), §3.2 |
+| 11–12 | Giới hạn vượt mức tối đa hoặc ngôn ngữ không được bật thì 400 | UC-15 (2a), FR-12 |
+| 13–16 | Đã có bài nộp thì cảnh báo, bài nộp cũ giữ nguyên kết quả | UC-15 (6a), §3.2 |
+| 17–20 | Khóa `PUBLISHED`: từ chối nếu thiếu test ẩn hoặc lời giải không đạt cho đúng nội dung này | UC-15 (6b), §3.2, AC-43 |
+| 21–24 | Lưu bài tập, test case và lời giải tham chiếu | UC-15 (hậu điều kiện), FR-12, FR-13, FR-14 |
+| 25–28 | Khóa `DRAFT` hoặc `REJECTED`: lưu nháp, đánh dấu chưa đủ điều kiện gửi duyệt | UC-15 (5a), AC-06 |
+
+### 10.2 Kiểm tra lời giải tham chiếu
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor GV as Giảng viên
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+  participant SB as Sandbox
+
+  GV->>FE: Nhấn Kiểm tra
+  FE->>API: POST /lessons/id/exercise/verify (nội dung hiện tại của biểu mẫu)
+  API->>API: Xác thực, kiểm tra dữ liệu, kích thước mã tối đa 64 KB, giới hạn tần suất
+  API->>DB: Kiểm tra quyền sở hữu và trạng thái khóa học
+  DB-->>API: Kết quả kiểm tra
+
+  alt Không hợp lệ
+    API-->>FE: Lỗi 400, 403, 409 hoặc 429
+    FE-->>GV: Hiển thị lỗi
+  else Hợp lệ
+    loop Với từng ngôn ngữ được phép
+      loop Với từng test case, cả công khai và ẩn
+        API->>SB: Chạy lời giải tham chiếu (ngôn ngữ, đầu vào, giới hạn)
+        Note right of SB: Container mới, không mạng, không root, hủy sau khi chạy
+        SB-->>API: Kết quả (đầu ra, thời gian, bộ nhớ, loại lỗi)
+
+        break Lỗi hạ tầng sandbox
+          API-->>FE: Lỗi 503
+          FE-->>GV: Hệ thống bận, thử lại sau
+        end
+      end
+    end
+
+    API->>API: So sánh đầu ra, tổng hợp kết quả từng test của từng ngôn ngữ
+    API->>DB: Lưu kết quả kiểm tra kèm mã băm của nội dung vừa kiểm tra
+    DB-->>API: Đã lưu
+    API-->>FE: Kết quả từng test (gồm test ẩn, vì người xem là chủ khóa học), đạt hoặc không đạt
+    FE-->>GV: Hiển thị test lỗi nếu có
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–5 | Gửi nội dung biểu mẫu, kiểm tra dữ liệu, quyền, kích thước mã và tần suất | UC-15 (4), FR-14, BR-02, BR-13, NFR-03, NFR-06 |
+| 6–7 | Từ chối khi không hợp lệ | UC-15 (\*a, \*b), BR-13 |
+| 8–9 | Mỗi lượt chạy trong sandbox riêng | UC-27, BR-10, NFR-07, §3.6 |
+| 10–11 | Lỗi hạ tầng sandbox thì dừng và báo hệ thống bận | UC-27 (4b) |
+| 12–16 | Tổng hợp kết quả từng test, lưu kèm mã băm nội dung; giảng viên thấy cả test ẩn | UC-15 (5, 5a), FR-14, BR-05 |
+
+### 10.3 Điểm thiết kế cần xác nhận
+
+1. **Kiểm tra gắn với mã băm nội dung.** Để thực thi AC-43 mà không chạy lại sandbox mỗi lần lưu khóa `PUBLISHED`, kết quả kiểm tra được lưu kèm mã băm của đề, test case và lời giải. Sửa bất cứ phần nào thì mã băm đổi và phải kiểm tra lại. Cách này cũng trả lời câu hỏi mở số 8 (UC-28 dùng kết quả đã lưu hay chạy lại); nếu chọn chạy lại thì khối kiểm tra ở 6.1 vẫn dùng được.
+2. **Kiểm tra đồng bộ có thể quá thời gian chờ.** Số lượt chạy bằng số ngôn ngữ nhân số test. Với bài nhiều test và nhiều ngôn ngữ, một yêu cầu HTTP có thể không đủ; cần đưa qua hàng đợi như UC-09 hoặc chạy song song có giới hạn. Gắn với quyết định Judge0 hay runner tự xây (câu hỏi mở số 1).
+3. **Lưu test ẩn và lời giải tham chiếu ở collection riêng** để đường đọc của người học không bao giờ chạm tới (BR-09), như điểm 5 ở 9.3. Giảng viên và admin đọc được (BR-05).
+4. **Giới hạn ghi của Firestore.** Một yêu cầu ghi tối đa 10 MiB và mỗi document tối đa 1 MiB, nên bài có test case lớn (đầu vào, đầu ra dài) cần chia thành nhiều document và nhiều lô. Khi đó việc lưu không còn nguyên tử; có thể ghi test mới với mã phiên bản rồi mới đổi con trỏ phiên bản của bài tập trong một thao tác duy nhất.
+5. **Bài nộp cũ và chấm lại.** UC-15 (6a) nói bài nộp cũ giữ nguyên kết quả. Requirements chưa nói khi chấm lại bài `INTERNAL_ERROR` (UC-19) thì dùng test case hiện tại hay phiên bản lúc nộp. Nên lưu phiên bản bài tập trong bài nộp.
+6. **Còn ít nhất một test ẩn khi xóa test.** Kiểm tra này phải nằm trong cùng thao tác với việc xóa, nếu không hai yêu cầu đồng thời có thể cùng xóa hai test ẩn cuối cùng.
+
+---
+
+## 11. UC-16 — Tạo mục QUIZ và soạn câu hỏi
+
+Câu hỏi hợp lệ theo FR-15: có ít nhất 2 lựa chọn, ít nhất một đáp án đúng, câu một đáp án chỉ có một đáp án đúng (AC-38). Khóa `PUBLISHED` được sửa ngay nhưng không được để mục QUIZ mất hết câu hỏi hợp lệ (AC-43).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor GV as Giảng viên
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  GV->>FE: Thêm mục QUIZ vào chương, nhập tiêu đề và điểm đạt
+  FE->>API: POST /sections/id/lessons (QUIZ, tiêu đề, điểm đạt)
+  API->>API: Xác thực, kiểm tra dữ liệu (điểm đạt mặc định 70 phần trăm)
+  API->>DB: Đọc khóa học (chủ sở hữu, trạng thái)
+  DB-->>API: Khóa học
+
+  alt Không phải chủ khóa học
+    API-->>FE: Lỗi 403
+    FE-->>GV: Hiển thị lỗi
+  else Khóa PENDING_REVIEW hoặc ARCHIVED
+    API-->>FE: Lỗi 409
+    FE-->>GV: Không cho sửa
+  else Được sửa
+    API->>DB: Tạo mục QUIZ chưa có câu hỏi
+    DB-->>API: Đã tạo
+    API-->>FE: Mục QUIZ mới
+    FE-->>GV: Hiển thị trình soạn câu hỏi
+
+    loop Soạn câu hỏi
+      GV->>FE: Thêm, sửa, xóa hoặc sắp xếp lại câu hỏi
+      FE->>API: PUT /lessons/id/quiz/questions (bộ câu hỏi sau khi sửa)
+      API->>API: Kiểm tra từng câu: ít nhất 2 lựa chọn, có đáp án đúng, câu một đáp án chỉ một đúng
+
+      alt Có câu không hợp lệ
+        API-->>FE: Lỗi 400 kèm lỗi của từng câu
+        FE-->>GV: Hiển thị lỗi, không lưu
+      else Hợp lệ
+        opt Đã có người học làm và chưa xác nhận
+          API-->>FE: Cảnh báo, cần xác nhận (kết quả cũ giữ nguyên)
+          FE-->>GV: Hiển thị cảnh báo
+          GV->>FE: Xác nhận lưu
+          FE->>API: PUT /lessons/id/quiz/questions (kèm xác nhận)
+        end
+
+        API->>DB: Bắt đầu transaction, đọc trạng thái khóa học
+        DB-->>API: Trạng thái khóa học
+
+        alt Khóa PUBLISHED và bộ câu hỏi mới không còn câu hợp lệ
+          API-->>FE: Lỗi 422, không lưu
+          FE-->>GV: Báo mục QUIZ phải còn ít nhất một câu hợp lệ
+        else Lưu được
+          API->>DB: Lưu bộ câu hỏi và thứ tự
+          DB-->>API: Đã lưu
+          API-->>FE: Đã lưu
+          FE-->>GV: Hiển thị đã lưu, nhắc chưa đủ điều kiện gửi duyệt nếu chưa có câu hỏi
+        end
+      end
+    end
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–5 | Tạo mục QUIZ với tiêu đề và điểm đạt, mặc định 70 phần trăm | UC-16 (1, 2), FR-15 |
+| 6–7 | Khóa của giảng viên khác thì 403 | UC-16 (\*a), BR-02 |
+| 8–9 | Khóa `PENDING_REVIEW` hoặc `ARCHIVED` không cho sửa | UC-16 (\*b), §3.2 |
+| 10–13 | Tạo mục QUIZ chưa có câu hỏi, mở trình soạn | UC-16 (5a), FR-11 |
+| 14–18 | Câu dưới 2 lựa chọn, không có đáp án đúng hoặc câu một đáp án có nhiều đáp án đúng thì không lưu | UC-16 (3a–3c), FR-15, NFR-03, AC-38 |
+| 19–22 | Đã có người học làm thì cảnh báo, kết quả cũ giữ nguyên | UC-16 (5c) |
+| 23–26 | Khóa `PUBLISHED` không cho lưu nếu mục không còn câu hỏi hợp lệ | UC-16 (5b), §3.2, AC-43 |
+| 27–30 | Lưu bộ câu hỏi; khóa `DRAFT` hoặc `REJECTED` lưu được dù chưa có câu hỏi nhưng chưa đủ điều kiện gửi duyệt | UC-16 (4, 5, 5a), AC-06 |
+
+### 11.1 Điểm thiết kế cần xác nhận
+
+1. **Cảnh báo trước khi sửa khi đã có người làm.** Sơ đồ yêu cầu xác nhận qua một lần gọi thứ hai kèm cờ xác nhận. Cách khác là API trả cờ cảnh báo ngay khi giảng viên mở trình soạn, để không tốn một lượt gọi bị từ chối.
+2. **Sửa câu hỏi không làm đổi kết quả cũ** (UC-16 5c, UC-29). Mỗi lần làm nên lưu kèm nội dung câu hỏi và đáp án đã chọn, hoặc câu hỏi có phiên bản, như điểm 2 ở 7.1.
+3. **Thứ tự câu hỏi.** Sắp xếp lại bằng mảng ID trong document mục QUIZ (một lần ghi) hoặc trường thứ tự trong từng câu (nhiều lần ghi). Mảng ID đơn giản hơn với bộ câu hỏi nhỏ.
+4. **Gửi cả bộ câu hỏi mỗi lần lưu.** Sơ đồ gửi toàn bộ bộ câu hỏi để kiểm tra bất biến của khóa `PUBLISHED` nguyên tử. Bộ rất lớn nên chuyển sang gửi phần thay đổi và kiểm tra lại số câu hợp lệ trong transaction.
+
+---
+
+## 12. UC-30 — Tạo và cấu hình bài đánh giá
+
+Bài đánh giá lưu **bản sao** câu hỏi và bài tập đã chọn (BR-20), nên sửa hoặc xóa mục học gốc về sau không ảnh hưởng bài đã tạo. Bài đã có lần làm bị khóa nội dung và cấu hình, chỉ cho gia hạn ngày đóng.
+
+### 12.1 Tạo bài đánh giá
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor GV as Giảng viên
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  GV->>FE: Chọn Tạo bài đánh giá trong khóa học
+  FE->>API: GET /courses/id/assessment-sources
+  API->>API: Xác thực, kiểm tra tài khoản còn hoạt động
+  API->>DB: Đọc khóa học và các mục QUIZ, CODING kèm kết quả kiểm tra của bài CODING
+  DB-->>API: Khóa học, câu hỏi, bài tập
+
+  alt Không phải chủ khóa học
+    API-->>FE: Lỗi 403
+    FE-->>GV: Hiển thị lỗi
+  else Khóa PENDING_REVIEW hoặc ARCHIVED
+    API-->>FE: Lỗi 409
+    FE-->>GV: Không cho sửa
+  else Được sửa
+    API-->>FE: Danh sách có thể chọn, đánh dấu bài CODING chưa đủ điều kiện và QUIZ đang hiện đáp án
+    FE-->>GV: Hiển thị, bài CODING chưa đủ điều kiện không chọn được, QUIZ hiện đáp án có cảnh báo
+    GV->>FE: Nhập cấu hình, chọn câu hỏi và bài tập, đặt điểm từng phần
+    FE->>API: POST /courses/id/assessments (cấu hình, danh sách mục, điểm)
+    API->>API: Kiểm tra: ít nhất một mục, tổng điểm lớn hơn 0, điểm đạt không vượt thang điểm, ngày đóng sau ngày mở, thời lượng lớn hơn 0
+
+    alt Dữ liệu không hợp lệ
+      API-->>FE: Lỗi 400 kèm từng trường
+      FE-->>GV: Hiển thị lỗi
+    else Hợp lệ
+      API->>DB: Đọc lại các mục đã chọn, kiểm tra bài CODING còn test ẩn và lời giải đạt
+      DB-->>API: Các mục đã chọn
+
+      alt Có mục không đủ điều kiện
+        API-->>FE: Lỗi 422 kèm các mục không đủ điều kiện
+        FE-->>GV: Hiển thị lỗi
+      else Đủ điều kiện
+        API->>DB: Tạo bài đánh giá và bản sao các mục đã chọn
+        Note over API,DB: Bản sao gồm câu hỏi, đáp án đúng, bài tập, test case và giới hạn, độc lập với mục gốc
+        DB-->>API: Đã tạo
+        API-->>FE: Bài đánh giá mới
+        FE-->>GV: Hiển thị bài đánh giá
+      end
+    end
+  end
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–5 | Lấy các mục QUIZ, CODING có thể nhập vào bài đánh giá | UC-30 (1, 3), BR-02 |
+| 6–9 | Khóa của giảng viên khác thì 403; khóa `PENDING_REVIEW` hoặc `ARCHIVED` không cho sửa | UC-30 (\*a, \*b) |
+| 10–11 | Bài CODING chưa đủ điều kiện không chọn được; QUIZ đang hiện đáp án có cảnh báo | UC-30 (3a, 3b) |
+| 12–16 | Kiểm tra cấu hình: ít nhất một mục, tổng điểm lớn hơn 0, điểm đạt không vượt thang điểm, ngày đóng sau ngày mở, thời lượng lớn hơn 0 | UC-30 (2, 4, 5, 5a), FR-16, AC-39 |
+| 17–20 | Kiểm tra lại điều kiện bài CODING ở máy chủ | UC-30 (3a), AC-39 |
+| 21–24 | Tạo bài đánh giá cùng bản sao, độc lập với mục gốc | UC-30 (3, 6b), FR-16, BR-20 |
+
+### 12.2 Sửa cấu hình và gia hạn ngày đóng
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor GV as Giảng viên
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  GV->>FE: Sửa cấu hình hoặc gia hạn ngày đóng
+  FE->>API: PUT /assessments/id
+  API->>API: Xác thực, kiểm tra dữ liệu
+  API->>DB: Bắt đầu transaction, đọc bài đánh giá (cờ đã có lần làm, ngày đóng) và khóa học
+  DB-->>API: Bài đánh giá và khóa học
+
+  alt Không phải chủ khóa học
+    API-->>FE: Lỗi 403
+    FE-->>GV: Hiển thị lỗi
+  else Khóa PENDING_REVIEW hoặc ARCHIVED
+    API-->>FE: Lỗi 409
+    FE-->>GV: Không cho sửa
+  else Đã có lần làm
+    alt Chỉ dời ngày đóng ra sau ngày đóng hiện tại
+      API->>DB: Cập nhật ngày đóng
+      DB-->>API: Đã cập nhật
+      API-->>FE: Đã gia hạn
+      FE-->>GV: Hiển thị ngày đóng mới
+    else Có thay đổi khác hoặc rút ngắn ngày đóng
+      API-->>FE: Lỗi 409, nội dung và cấu hình đã bị khóa
+      FE-->>GV: Chỉ cho gia hạn ngày đóng
+    end
+  else Chưa có lần làm
+    API->>DB: Cập nhật cấu hình và các mục
+    DB-->>API: Đã cập nhật
+    API-->>FE: Đã lưu
+    FE-->>GV: Hiển thị đã lưu
+  end
+  Note over API,DB: Khi bắt đầu lần làm đầu tiên (xem 3.1), API cũng đọc bài đánh giá trong transaction và đặt cờ đã có lần làm, nên việc sửa và việc bắt đầu không thể cùng thành công
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–5 | Đọc bài đánh giá và cờ đã có lần làm trong transaction | UC-30 (6a), BR-20 |
+| 6–9 | Khóa của giảng viên khác thì 403; khóa `PENDING_REVIEW` hoặc `ARCHIVED` không cho sửa | UC-30 (\*a, \*b), BR-02 |
+| 10–13 | Đã có lần làm: chỉ cho gia hạn ngày đóng | UC-30 (6a), BR-20, AC-39 |
+| 14–15 | Thay đổi khác hoặc rút ngắn ngày đóng thì từ chối | BR-20, AC-39 |
+| 16–19 | Chưa có lần làm thì sửa tự do | UC-30 (2), FR-16 |
+
+### 12.3 Điểm thiết kế cần xác nhận
+
+1. **Cờ đã có lần làm cần đồng bộ với UC-11.** Để BR-20 đúng khi sửa và bắt đầu làm bài xảy ra cùng lúc, sơ đồ 3.1 phải đặt cờ này trong transaction bắt đầu lần làm đầu tiên. Cờ chỉ ghi khi chuyển từ chưa có sang đã có, các lần bắt đầu sau chỉ đọc, để không dồn ghi vào một document (Firestore chịu ghi liên tục vào một document kém hơn nhiều document khác nhau).
+2. **Bản sao lớn.** Bài có nhiều bài CODING mỗi bài nhiều test case dễ vượt 10 MiB mỗi yêu cầu ghi, và mỗi document tối đa 1 MiB. Nên lưu bản sao thành các document con của bài đánh giá và tạo bằng nhiều lô, đánh dấu bài đánh giá là hoàn tất sau lô cuối để không có bài thiếu mục.
+3. **Kiểm tra điều kiện của bài CODING hai lần.** Một lần lúc lấy danh sách (chỉ để giao diện biết mục nào chọn được) và một lần lúc tạo, vì khóa `PUBLISHED` có thể đổi giữa hai bước.
+4. **Cảnh báo câu QUIZ đang hiện đáp án** (UC-30 3b) chỉ mang tính gợi ý, không chặn. Cần xác nhận có muốn chặn hẳn không.
+5. **Kết quả code của bài đánh giá tách khỏi bài nộp** (BR-19). Bản sao bài tập trong bài đánh giá cũng dùng để chấm phần code, nên worker cần đọc test case từ bản sao, không từ mục gốc.
+
+---
+
+## 13. UC-22, UC-21 — Quản lý người dùng và lưu trữ khóa học
+
+Hai thao tác của admin có ảnh hưởng lan rộng nên đều dùng điều kiện trạng thái trong transaction.
+
+### 13.1 Vô hiệu hóa hoặc kích hoạt lại tài khoản
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor AD as Admin
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  AD->>FE: Mở quản lý người dùng, tìm và lọc theo vai trò, trạng thái
+  FE->>API: GET /admin/users (từ khóa, vai trò, trạng thái, trang)
+  API->>API: Xác thực, kiểm tra vai trò Admin
+  API->>DB: Truy vấn người dùng
+  DB-->>API: Danh sách người dùng
+  API-->>FE: Danh sách có phân trang
+  FE-->>AD: Hiển thị danh sách
+
+  AD->>FE: Chọn một tài khoản, nhấn Vô hiệu hóa
+  FE->>API: PATCH /admin/users/id (isActive là false)
+  API->>API: Xác thực, kiểm tra vai trò Admin
+  API->>DB: Bắt đầu transaction, đọc tài khoản đích và danh sách admin đang hoạt động
+  DB-->>API: Tài khoản đích, các admin đang hoạt động
+
+  alt Không phải Admin
+    API-->>FE: Lỗi 403
+    FE-->>AD: Hiển thị lỗi
+  else Tự vô hiệu hóa mình hoặc admin hoạt động cuối cùng
+    API-->>FE: Lỗi 409
+    FE-->>AD: Báo không thể vô hiệu hóa
+  else Hợp lệ
+    API->>DB: Đặt isActive là false và thu hồi các refresh token của tài khoản
+    DB-->>API: Đã cập nhật
+    API-->>FE: Đã vô hiệu hóa
+    FE-->>AD: Cập nhật trạng thái trong danh sách
+  end
+  Note over API,DB: Từ yêu cầu kế tiếp, token cũ của tài khoản bị từ chối vì mỗi yêu cầu kiểm tra isActive (xem 4.3). Kích hoạt lại dùng cùng luồng, đặt isActive là true và không cần kiểm tra admin cuối cùng
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–7 | Admin tìm và lọc người dùng theo vai trò, trạng thái | UC-22 (1), FR-06 |
+| 8–12 | Chọn tài khoản, đọc tài khoản đích và các admin đang hoạt động trong transaction | UC-22 (2), FR-04 |
+| 13–14 | Không phải admin thì 403 | NFR-02 |
+| 15–16 | Tự vô hiệu hóa mình hoặc admin hoạt động cuối cùng thì từ chối | UC-22 (2a), FR-06, AC-32 |
+| 17–20 | Đặt `isActive` là false, thu hồi refresh token; token cũ bị từ chối từ yêu cầu kế tiếp | UC-22 (3), FR-04, NFR-05, AC-30 |
+
+### 13.2 Gỡ khóa học xuống (lưu trữ)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor AD as Admin
+  actor L as Người học đã ghi danh
+  actor L2 as Người học chưa ghi danh
+  participant FE as Frontend
+  participant API as API
+  participant DB as Firestore
+
+  AD->>FE: Chọn khóa học PUBLISHED, nhấn Gỡ xuống
+  FE->>API: POST /admin/courses/id/archive
+  API->>API: Xác thực, kiểm tra vai trò Admin
+  API->>DB: Chuyển ARCHIVED, chỉ khi đang PUBLISHED
+  DB-->>API: Kết quả cập nhật có điều kiện
+
+  alt Không cập nhật được vì khóa không còn PUBLISHED
+    API-->>FE: Lỗi 409
+    FE-->>AD: Báo trạng thái đã thay đổi, tải lại
+  else Chuyển được
+    API-->>FE: Đã lưu trữ
+    FE-->>AD: Cập nhật trạng thái khóa học
+  end
+
+  Note over L,DB: Sau khi lưu trữ
+  L->>FE: Mở khóa học đã ghi danh
+  FE->>API: GET /courses/id/outline
+  API->>DB: Đọc khóa học và ghi danh
+  DB-->>API: Khóa ARCHIVED, ghi danh còn hiệu lực
+  API-->>FE: Đề cương và nội dung như trước
+  FE-->>L: Vẫn học được
+
+  L2->>FE: Nhấn Ghi danh
+  FE->>API: POST /courses/id/enrollments
+  API-->>FE: Lỗi 409, khóa không còn nhận ghi danh
+  FE-->>L2: Báo khóa học đã ngừng nhận ghi danh
+```
+
+| Bước | Hành động | Ràng buộc liên quan |
+|---|---|---|
+| 1–9 | Admin chuyển `PUBLISHED` sang `ARCHIVED`, chỉ khi đang `PUBLISHED` | UC-21, FR-19, §3.2 |
+| 10–15 | Người đã ghi danh vẫn truy cập sau khi lưu trữ | BR-06, AC-14 |
+| 16–19 | Người chưa ghi danh không ghi danh mới được | BR-01, UC-06 (2a) |
+
+### 13.3 Điểm thiết kế cần xác nhận
+
+1. **Admin hoạt động cuối cùng.** Số admin ít nên transaction đọc luôn danh sách admin đang hoạt động, không cần bộ đếm riêng. Thiết kế này thất bại nếu về sau có hàng nghìn admin, khi đó nên dùng bộ đếm.
+2. **Tìm kiếm người dùng.** FR-06 yêu cầu tìm kiếm, nhưng Firestore không có tìm kiếm toàn văn. Chỉ hỗ trợ tìm theo khớp chính xác hoặc tiền tố của email và tên (truy vấn khoảng). Tìm theo từ khóa tự do cần dịch vụ ngoài hoặc lọc trên tập nhỏ.
+3. **Giảng viên bị vô hiệu hóa có khóa `PUBLISHED`** (UC-22 3a, câu hỏi mở số 6): giữ nguyên, lưu trữ hay chuyển giảng viên. Sơ đồ chưa xử lý các khóa này. Nếu chọn lưu trữ hàng loạt thì nên ghi theo lô (BulkWriter) thay vì một transaction dài.
+4. **Access token đã cấp.** Thu hồi refresh token chỉ chặn việc làm mới. Access token còn hạn (khoảng 15 phút) vẫn bị từ chối nhờ kiểm tra `isActive` ở mỗi yêu cầu (NFR-05, AC-30), nên việc kiểm tra này không được bỏ hay đệm lâu (xem điểm 4 ở 4.5).
+5. **Khôi phục khóa `ARCHIVED`** chưa được quy định (có trong danh sách câu hỏi mở của backlog). Sơ đồ coi lưu trữ là một chiều.
+6. **Danh sách công khai.** Khóa `ARCHIVED` biến mất khỏi danh sách và tìm kiếm công khai (UC-04) nhờ điều kiện lọc theo trạng thái `PUBLISHED`; truy vấn lọc kết hợp sắp xếp cần chỉ mục tổng hợp.

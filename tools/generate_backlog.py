@@ -54,17 +54,40 @@ LABELS = {
     "area:system": ("ededed", "Thành phần hệ thống"),
 }
 
-# Use case có sơ đồ tuần tự hoặc trạng thái đi kèm
+# Use case có sơ đồ tuần tự hoặc trạng thái đi kèm.
+# Mỗi liên kết là (nhãn, "tên-file.md#anchor"); check_links() kiểm tra file và anchor có thật.
+SEQ = "sequence-diagram.md"
+STATE = "state-diagrams.md"
+SEQ_AUTH = ("Sơ đồ tuần tự đăng ký, đăng nhập, phiên", f"{SEQ}#4-uc-01-uc-02--đăng-ký-đăng-nhập-và-quản-lý-phiên")
+SEQ_REVIEW = ("Sơ đồ tuần tự gửi duyệt và kiểm duyệt", f"{SEQ}#6-uc-17-uc-28-uc-20--gửi-duyệt-và-kiểm-duyệt-khóa-học")
+SEQ_ADMIN = ("Sơ đồ tuần tự quản lý người dùng và lưu trữ khóa học", f"{SEQ}#13-uc-22-uc-21--quản-lý-người-dùng-và-lưu-trữ-khóa-học")
+SEQ_INCIDENT = ("Luồng sự cố và chấm lại", f"{SEQ}#22-luồng-sự-cố-bài-nộp-kẹt-và-chấm-lại")
+SEQ_GRADING = ("Sơ đồ tuần tự chấm bài", f"{SEQ}#21-luồng-chính")
+LIFECYCLE_COURSE = ("Vòng đời khóa học", f"{STATE}#1-vòng-đời-khóa-học")
 EXTRA_LINKS = {
-    "UC-09": [("Sơ đồ tuần tự UC-09", "sequence-diagrams.md#2-uc-09--nộp-bài-và-xem-kết-quả-chấm"),
-              ("Vòng đời bài nộp", "state-diagrams.md#2-vòng-đời-bài-nộp")],
-    "UC-11": [("Sơ đồ tuần tự UC-11", "sequence-diagrams.md#3-uc-11--làm-bài-đánh-giá"),
-              ("Vòng đời lần làm bài đánh giá", "state-diagrams.md#3-vòng-đời-lần-làm-bài-đánh-giá")],
-    "UC-13": [("Vòng đời khóa học", "state-diagrams.md#1-vòng-đời-khóa-học")],
-    "UC-17": [("Vòng đời khóa học", "state-diagrams.md#1-vòng-đời-khóa-học")],
-    "UC-19": [("Luồng sự cố và chấm lại", "sequence-diagrams.md#22-luồng-sự-cố-bài-nộp-kẹt-và-chấm-lại")],
-    "UC-25": [("Cách xác định verdict", "state-diagrams.md#22-cách-xác-định-verdict-cuối")],
-    "UC-26": [("Luồng sự cố và chấm lại", "sequence-diagrams.md#22-luồng-sự-cố-bài-nộp-kẹt-và-chấm-lại")],
+    "UC-01": [SEQ_AUTH],
+    "UC-02": [SEQ_AUTH],
+    "UC-06": [("Sơ đồ tuần tự UC-06", f"{SEQ}#8-uc-06--ghi-danh-và-hủy-ghi-danh-khóa-học")],
+    "UC-07": [("Sơ đồ tuần tự UC-07", f"{SEQ}#9-uc-07--học-nội-dung-và-đánh-dấu-hoàn-thành")],
+    "UC-08": [("Sơ đồ tuần tự UC-08", f"{SEQ}#5-uc-08--chạy-thử-code")],
+    "UC-09": [("Sơ đồ tuần tự UC-09", f"{SEQ}#2-uc-09--nộp-bài-và-xem-kết-quả-chấm"),
+              ("Vòng đời bài nộp", f"{STATE}#2-vòng-đời-bài-nộp")],
+    "UC-11": [("Sơ đồ tuần tự UC-11", f"{SEQ}#3-uc-11--làm-bài-đánh-giá"),
+              ("Vòng đời lần làm bài đánh giá", f"{STATE}#3-vòng-đời-lần-làm-bài-đánh-giá")],
+    "UC-13": [LIFECYCLE_COURSE],
+    "UC-15": [("Sơ đồ tuần tự UC-15", f"{SEQ}#10-uc-15--tạo-bài-tập-code-và-test-case")],
+    "UC-16": [("Sơ đồ tuần tự UC-16", f"{SEQ}#11-uc-16--tạo-mục-quiz-và-soạn-câu-hỏi")],
+    "UC-17": [SEQ_REVIEW, LIFECYCLE_COURSE],
+    "UC-19": [SEQ_INCIDENT],
+    "UC-20": [SEQ_REVIEW, LIFECYCLE_COURSE],
+    "UC-21": [SEQ_ADMIN, LIFECYCLE_COURSE],
+    "UC-22": [SEQ_ADMIN],
+    "UC-25": [SEQ_GRADING, ("Cách xác định verdict", f"{STATE}#22-cách-xác-định-verdict-cuối")],
+    "UC-26": [SEQ_INCIDENT],
+    "UC-27": [SEQ_GRADING],
+    "UC-28": [SEQ_REVIEW],
+    "UC-29": [("Sơ đồ tuần tự UC-29", f"{SEQ}#7-uc-29--làm-mục-học-quiz")],
+    "UC-30": [("Sơ đồ tuần tự UC-30", f"{SEQ}#12-uc-30--tạo-và-cấu-hình-bài-đánh-giá")],
 }
 
 ID_RE = re.compile(r"\b(FR|BR|NFR|AC)-(\d{2})(?:\s*[–-]\s*(?:(?:FR|BR|NFR|AC)-)?(\d{2}))?")
@@ -85,6 +108,36 @@ def fmt(ids, kind):
 
 def slug(heading):
     return re.sub(r"[^\w\- ]", "", heading.lower()).replace(" ", "-")
+
+
+def heading_slugs(path):
+    """Tập anchor (theo cách GitHub đặt) của các tiêu đề trong một file .md, bỏ qua khối mã."""
+    text = re.sub(r"```.*?```", "", path.read_text(encoding="utf-8"), flags=re.S)
+    seen, out = {}, set()
+    for m in re.finditer(r"^#{1,6} +(.+?) *#*$", text, re.M):
+        s = slug(m.group(1).strip())
+        n = seen.get(s, 0)
+        seen[s] = n + 1
+        out.add(s if n == 0 else f"{s}-{n}")
+    return out
+
+
+def check_links(links=None):
+    """Mọi liên kết trong EXTRA_LINKS phải trỏ tới file và tiêu đề có thật.
+
+    check_docs.py chỉ kiểm tra liên kết viết sẵn trong file .md, còn liên kết ở đây được ghép
+    chuỗi nên cần kiểm tra riêng, nếu không đổi tên file hay tiêu đề sẽ làm hỏng backlog mà CI không biết.
+    """
+    errors, cache = [], {}
+    for uid, items in (EXTRA_LINKS if links is None else links).items():
+        for title, target in items:
+            name, _, anchor = target.partition("#")
+            path = DOCS / name
+            if not path.is_file():
+                errors.append(f"{uid}: liên kết '{title}' trỏ tới file không tồn tại: docs/{name}")
+            elif anchor and anchor not in cache.setdefault(name, heading_slugs(path)):
+                errors.append(f"{uid}: liên kết '{title}' trỏ tới tiêu đề không tồn tại: docs/{name}#{anchor}")
+    return errors
 
 
 def areas(actor):
@@ -166,9 +219,9 @@ def infra_issues():
                    "Chọn giấy phép (hoặc để trống nếu là đồ án nộp riêng) và quyết định repo public hay private đến khi nộp báo cáo.\n\n- [ ] Quyết định và ghi vào README\n- [ ] Không đưa file báo cáo `.docx` (có tên, mã sinh viên) vào repo public"))
     I.append(plain("Chốt các câu hỏi mở ở requirements §10 và ghi ADR", M0, "type:decision",
                    "Mỗi câu hỏi mở thành một ADR ngắn trong `docs/adr/`, sau đó cập nhật requirements, use case và changelog.\n\n- [ ] Judge0 hay runner Docker tự xây (ADR-0001, chốt sau spike M1)\n- [ ] Lần làm bài đánh giá bị bỏ dở có tính lượt không\n- [ ] Quay lại sau khi hết hạn nhưng trước lần quét của bộ định thời\n- [ ] Hủy ghi danh khi đang làm bài đánh giá\n- [ ] Giảng viên bị vô hiệu hóa thì khóa học ra sao\n- [ ] Khi gửi duyệt có chạy lại lời giải tham chiếu không\n- [ ] Giảng viên có rút lại yêu cầu duyệt được không\n- [ ] Khóa `ARCHIVED` có khôi phục được không",
-                   "requirements.md §10, state-diagrams.md mục 4, sequence-diagrams.md mục 2.3 và 3.4"))
+                   "requirements.md §10, state-diagrams.md mục 4, các mục Điểm thiết kế cần xác nhận của sequence-diagram.md (2.3, 3.4, 4.5, 5.1, 6.3, 7.1, 8.3, 9.3, 10.3, 11.1, 12.3, 13.3)"))
     I.append(plain("Thiết kế mô hình dữ liệu Firestore", M0, "type:docs",
-                   "Mô hình dữ liệu cho toàn bộ hệ thống: collection, ID document, chỉ mục. Các điểm cần thể hiện:\n\n- [ ] Bản sao câu hỏi và bài tập trong bài đánh giá (BR-20)\n- [ ] Tiến độ gắn với (người học, mục học), không phụ thuộc ghi danh (§3.5)\n- [ ] Bản ghi kết quả chấm lại, có người thực hiện (BR-11)\n- [ ] Kết quả code của bài đánh giá lưu theo lần làm (BR-19)\n- [ ] ID document xác định để đảm bảo duy nhất cho ghi danh, tiến độ, email và một lần làm `IN_PROGRESS` (NFR-13)\n- [ ] Nơi lưu số lần đưa lại của bài `QUEUED` kẹt (§3.3)\n- [ ] Chỉ mục tổng hợp cho truy vấn của bộ định thời và thống kê (`firestore.indexes.json`)\n- [ ] Security Rules từ chối mọi truy cập trực tiếp từ client (BR-05, BR-09)\n- [ ] Cách lưu kết quả từng test: mảng trong document hay subcollection (giới hạn 1 MiB mỗi document, 500 thao tác ghi mỗi transaction)",
+                   "Mô hình dữ liệu cho toàn bộ hệ thống: collection, ID document, chỉ mục. Các điểm cần thể hiện:\n\n- [ ] Bản sao câu hỏi và bài tập trong bài đánh giá (BR-20)\n- [ ] Tiến độ gắn với (người học, mục học), không phụ thuộc ghi danh (§3.5)\n- [ ] Bản ghi kết quả chấm lại, có người thực hiện (BR-11)\n- [ ] Kết quả code của bài đánh giá lưu theo lần làm (BR-19)\n- [ ] ID document xác định để đảm bảo duy nhất cho ghi danh, tiến độ, email và một lần làm `IN_PROGRESS` (NFR-13)\n- [ ] Nơi lưu số lần đưa lại của bài `QUEUED` kẹt (§3.3)\n- [ ] Chỉ mục tổng hợp cho truy vấn của bộ định thời và thống kê (`firestore.indexes.json`)\n- [ ] Security Rules từ chối mọi truy cập trực tiếp từ client (BR-05, BR-09)\n- [ ] Cách lưu kết quả từng test: mảng trong document hay subcollection (giới hạn 1 MiB mỗi document, 10 MiB mỗi yêu cầu ghi)",
                    "BR-04, BR-11, BR-19, BR-20, NFR-13, §3.5"))
     I.append(plain("Đặc tả API (OpenAPI)", M0, "type:docs",
                    "Suy ra từ use case và sơ đồ tuần tự; thay các endpoint minh họa bằng endpoint chính thức.\n\n- [ ] Endpoint, quyền, mã lỗi cho từng use case\n- [ ] Định dạng lỗi thống nhất (NFR-15)\n- [ ] Phân trang (NFR-14)",
@@ -229,6 +282,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true", help="chỉ kiểm tra, không ghi file")
     args = ap.parse_args()
+    errors = check_links()
+    if errors:
+        print("Liên kết trong EXTRA_LINKS bị hỏng:")
+        print("\n".join("  " + e for e in errors))
+        return 1
     issues = build()
     data = json.dumps(
         {"milestones": [{"title": t, "description": d} for t, d in MILESTONES],
