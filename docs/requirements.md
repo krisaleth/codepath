@@ -540,7 +540,7 @@ Các mục sau **không** nằm trong MVP:
 
 Các điểm cần quyết định thêm; mặc định ở trên cho phép bắt đầu phát triển.
 
-1. Dùng **Judge0 tự host** (nhanh triển khai, hỗ trợ nhiều ngôn ngữ) hay **tự xây runner bằng Docker** (kiểm soát hơn, chứng minh kỹ thuật tốt hơn cho đồ án)?
+1. Dùng **Judge0 tự host** (nhanh triển khai, hỗ trợ nhiều ngôn ngữ) hay **tự xây runner bằng Docker** (kiểm soát hơn, chứng minh kỹ thuật tốt hơn cho đồ án)? Phân tích và đề xuất ở [ADR-0001](adr/0001-sandbox-judge0-hay-docker.md); chốt sau spike M1.
 2. Nên hỗ trợ chấm lại tự động toàn bộ bài nộp cũ khi giảng viên sửa test case không?
 3. Có cần bài tập dạng **điền vào chỗ trống/sửa lỗi code** ngoài viết hàm đầy đủ không?
 4. Cách chấm so sánh đầu ra: so khớp chính xác, bỏ qua khoảng trắng cuối dòng, hay hỗ trợ checker tùy chỉnh?
